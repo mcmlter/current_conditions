@@ -4,7 +4,7 @@ A live "current conditions" display for the
 [McMurdo Dry Valleys Long Term Ecological Research (MCM LTER)](https://mcm.lternet.edu)
 program in Antarctica. It shows the latest readings from one weather station or
 lake buoy at a time and moves on to the next site every minute. Sites that
-haven't reported in the last 6 hours are skipped automatically.
+haven't reported in the last 12 hours are skipped automatically.
 
 The page works on phones, desktops and large lobby displays.
 
@@ -42,13 +42,14 @@ the last 6 hours, and the 6-hour range.
 
 - **Wind direction** is the compass point the wind blows *from*, e.g. "WNW, from 282°".
   The arrow points the way the wind is blowing, matching the MCM live data viewer.
-- **Times** are local McMurdo time (UTC +13). "Last observation" is the logger's
-  most recent record. Most sites log every 15 minutes.
+- **Times** are shown in UTC+13, the time the field loggers keep year-round (the
+  same as NZ daylight time). "Last observation" is the logger's most recent record.
+  Most sites log every 15 minutes.
 - **Site chips** along the bottom list every site in the rotation. Dashed, greyed-out
-  chips are sites with no data in the last 6 hours. Click any active chip to jump to
+  chips are sites with no data in the last 12 hours. Click any active chip to jump to
   that site.
 - **The blue bar** under the chips counts down to the next site.
-- A dash (**—**) means the sensor had no valid reading in the last 6 hours, even
+- A dash (**—**) means the sensor had no valid reading in the last 12 hours, even
   though the site is otherwise reporting.
 
 ## Sites

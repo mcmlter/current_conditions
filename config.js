@@ -11,16 +11,21 @@ const CONFIG = {
   proxyBase: 'https://mcm-proxy.uwcfl.workers.dev',
 
   rotateSeconds: 60,          // how long each site stays on screen
-  freshHours: 6,              // skip sites whose newest record is older than this
-  refreshMinutes: 10,         // re-fetch every site's data this often
+  freshHours: 12,             // skip sites whose newest record is older than this
+  recheckStaleMinutes: 10,    // after a site is stale/unreachable, wait this long before asking again
+  fetchTimeoutSeconds: 10,    // give up on a request (and try the next site) after this
   trendHours: 6,              // sparkline + range window under each value
 
-  // Display time zone for observation timestamps and the header clock.
-  timeZone: 'Antarctica/McMurdo',
+  // Display zone for observation times and the header clock. Fixed UTC+13 to
+  // match the logger clocks year-round. (IANA "Etc/GMT-13" means UTC+13;
+  // the sign is inverted by convention.) Use 'Antarctica/McMurdo' instead to
+  // follow NZ daylight saving.
+  timeZone: 'Etc/GMT-13',
+  timeZoneLabel: 'UTC+13',
 
-  // Loggers record in UTC+13 (fixed, no daylight saving). The proxy already
-  // stamps rows with "+13:00"; this is used only if a timestamp lacks an offset.
-  fallbackUtcOffset: '+13:00',
+  // Loggers record in fixed UTC+13. The proxy stamps rows with "+13:00";
+  // this is used only if a timestamp arrives without an offset.
+  loggerUtcOffset: '+13:00',
 };
 
 const MS_TO_KT = 1.94384;

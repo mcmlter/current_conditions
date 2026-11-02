@@ -11,10 +11,11 @@ const HOUR = 3600000;
 const GAP_MS = 2 * HOUR;             // break sparkline across gaps longer than this
 const TYPE_LABEL = { met: 'Met station', lake: 'Lake buoy' };
 
-const store = new Map();             // code → { rows: [{time, ...fields}], latest: Date|null, error }
+const store = new Map();             // code → { rows: [{time, ...fields}], latest: Date|null, error, checkedAt }
 let currentCode = null;
 let rotateTimer = null;
 let firstRender = true;
+let generation = 0;                  // bumps whenever a newer rotation supersedes an in-flight one
 
 // ─── Small helpers ────────────────────────────────────────────
 const $ = sel => document.querySelector(sel);
@@ -25,25 +26,43 @@ function num(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+// Parse logger timestamps by hand into an absolute instant. Never hand a bare
+// "YYYY-MM-DD HH:MM:SS" to Date(): browsers read that as the *viewer's* local
+// time. Here the offset always comes from the string (proxy writes "+13:00")
+// or from CONFIG.loggerUtcOffset, so results are the same in every time zone.
+const TS_RE = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d+))?)?\s*(Z|[+-]\d{2}:?\d{2})?$/i;
+
+function offsetMinutes(str) {
+  if (!str || /^z$/i.test(str)) return 0;
+  const m = /^([+-])(\d{2}):?(\d{2})$/.exec(str);
+  return (m[1] === '-' ? -1 : 1) * (+m[2] * 60 + +m[3]);
+}
+
 function parseTime(s) {
   if (!s) return null;
-  let ts = s.trim().replace(' ', 'T');
-  if (!/[zZ]|[+-]\d\d:?\d\d$/.test(ts)) ts += CONFIG.fallbackUtcOffset;
-  const d = new Date(ts);
-  return isNaN(d) ? null : d;
+  const m = TS_RE.exec(s.trim());
+  if (!m) return null;
+  const [, y, mo, d, h, mi, sec = '0', frac = '0', off] = m;
+  const ms = Number(('0.' + frac).slice(0, 5)) * 1000;
+  const utc = Date.UTC(+y, +mo - 1, +d, +h, +mi, +sec, ms) -
+    offsetMinutes(off || CONFIG.loggerUtcOffset) * 60000;
+  return Number.isFinite(utc) ? new Date(utc) : null;
 }
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
-const timeFmt = new Intl.DateTimeFormat('en-NZ', {
-  timeZone: CONFIG.timeZone, hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'short',
+// Displayed times use an explicit zone, never the viewer's own.
+const timeFmtRaw = new Intl.DateTimeFormat('en-NZ', {
+  timeZone: CONFIG.timeZone, hour: '2-digit', minute: '2-digit', hour12: false,
 });
-const clockFmt = new Intl.DateTimeFormat('en-NZ', {
+const clockFmtRaw = new Intl.DateTimeFormat('en-NZ', {
   timeZone: CONFIG.timeZone, weekday: 'short', day: 'numeric', month: 'short',
-  hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'short',
+  hour: '2-digit', minute: '2-digit', hour12: false,
 });
+const timeFmt = { format: d => `${timeFmtRaw.format(d)} ${CONFIG.timeZoneLabel}` };
+const clockFmt = { format: d => `${clockFmtRaw.format(d)} ${CONFIG.timeZoneLabel}` };
 
 function ago(d) {
   const min = Math.round((Date.now() - d) / 60000);
@@ -69,9 +88,16 @@ function isFresh(code) {
   return !!(s && s.latest && Date.now() - s.latest <= CONFIG.freshHours * HOUR);
 }
 
+// Checked recently and found stale or unreachable → don't ask again yet.
+function inCooldown(code) {
+  const s = store.get(code);
+  return !!(s && s.checkedAt && !isFresh(code) &&
+    Date.now() - s.checkedAt < CONFIG.recheckStaleMinutes * 60000);
+}
+
 // ─── Data loading ─────────────────────────────────────────────
-// The proxy returns the whole logger file, newest row first. We only keep
-// the trend window, so we can stop parsing early.
+// The proxy returns the whole logger file, newest row first, so one request
+// covers any window (even across days). We stop parsing once past it.
 function parseCsv(text, site) {
   const lines = text.split(/\r?\n/);
   const header = lines[0].split(',');
@@ -79,6 +105,8 @@ function parseCsv(text, site) {
   const vars = VARIABLES[site.type];
   const rows = [];
   let newest = null;
+  // Keep enough history for both the trend line and the latest-value lookup.
+  const keepHours = Math.max(CONFIG.trendHours, CONFIG.freshHours);
 
   for (let i = 1; i < lines.length; i++) {
     if (!lines[i]) continue;
@@ -86,7 +114,7 @@ function parseCsv(text, site) {
     const time = parseTime(cells[idx.timestamp_utc]);
     if (!time) continue;
     if (!newest) newest = time;
-    if (newest - time > CONFIG.trendHours * HOUR) break;
+    if (newest - time > keepHours * HOUR) break;
     const row = { time };
     for (const v of vars) {
       for (const f of [...seriesDefs(v).map(d => d.field), v.dirField, v.gustField]) {
@@ -99,32 +127,41 @@ function parseCsv(text, site) {
   return rows;
 }
 
+// Fetch one site. On failure, keep whatever we had before (it will age out
+// of the 6-hour window on its own) and record the error.
 async function fetchSite(site) {
+  const checkedAt = Date.now();
   try {
-    const rows = DEMO
-      ? demoRows(site)
-      : parseCsv(await (await fetchOk(`${CONFIG.proxyBase}/${site.type}/${site.code}`)).text(), site);
-    store.set(site.code, { rows, latest: rows.length ? rows[rows.length - 1].time : null, error: null });
+    let rows;
+    if (DEMO) {
+      await sleep(150);                    // pretend there's a network
+      rows = demoRows(site);
+    } else {
+      const res = await fetchWithTimeout(`${CONFIG.proxyBase}/${site.type}/${site.code}`);
+      rows = parseCsv(await res.text(), site);
+    }
+    store.set(site.code, { rows, latest: rows.length ? rows[rows.length - 1].time : null, error: null, checkedAt });
   } catch (e) {
     const prev = store.get(site.code);
-    store.set(site.code, { rows: prev ? prev.rows : [], latest: prev ? prev.latest : null, error: e.message });
+    store.set(site.code, {
+      rows: prev ? prev.rows : [], latest: prev ? prev.latest : null, error: e.message, checkedAt,
+    });
     console.warn(`[current-conditions] ${site.code}: ${e.message}`);
   }
 }
 
-async function fetchOk(url) {
-  const res = await fetch(url, { cache: 'no-cache' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res;
-}
-
-async function refreshAll() {
-  const queue = [...SITES];
-  const workers = Array.from({ length: 4 }, async () => {
-    while (queue.length) await fetchSite(queue.shift());
-  });
-  await Promise.all(workers);
-  renderDots();
+async function fetchWithTimeout(url) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), CONFIG.fetchTimeoutSeconds * 1000);
+  try {
+    const res = await fetch(url, { cache: 'no-cache', signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res;
+  } catch (e) {
+    throw e.name === 'AbortError' ? new Error(`timed out after ${CONFIG.fetchTimeoutSeconds} s`) : e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // ─── Per-variable summaries ───────────────────────────────────
@@ -134,14 +171,20 @@ function seriesDefs(v) {
   return v.series || [{ field: v.field, name: null }];
 }
 
+// latestTime = the site's most recent observation (the trend window hangs off it).
 function summarizeField(field, scale, rows, latestTime) {
   const get = r => (r[field] == null ? null : r[field] * (scale || 1));
-  const windowStart = latestTime - CONFIG.freshHours * HOUR;
+  // Latest value: newest non-empty reading within `freshHours` of *now*, so a
+  // tile never shows a reading older than that (dash instead).
+  const windowStart = Date.now() - CONFIG.freshHours * HOUR;
   let last = null;
   for (let i = rows.length - 1; i >= 0 && rows[i].time >= windowStart; i--) {
     if (get(rows[i]) != null) { last = rows[i]; break; }
   }
-  const series = rows.map(r => ({ time: r.time, value: get(r) }));
+  // Trend line and range: the `trendHours` ending at the site's most recent
+  // observation (not at "now"), so an hours-old site still gets a full window.
+  const trendStart = latestTime - CONFIG.trendHours * HOUR;
+  const series = rows.filter(r => r.time >= trendStart).map(r => ({ time: r.time, value: get(r) }));
   const vals = series.map(p => p.value).filter(x => x != null);
   return {
     value: last ? get(last) : null,
@@ -304,13 +347,18 @@ function cardHtml(site) {
     <div class="tiles">${tiles}</div>`;
 }
 
+// Chips: unchecked sites look normal (we just haven't asked yet); sites that
+// were checked and came back stale or failed are dashed until re-checked.
 function renderDots() {
   const wrap = $('#site-dots');
   wrap.innerHTML = SITES.map(s => {
-    const fresh = isFresh(s.code);
-    const cls = ['site-dot', fresh ? '' : 'stale', s.code === currentCode ? 'active' : ''].join(' ').trim();
-    const title = `${s.name} (${TYPE_LABEL[s.type]})` + (fresh ? '' : ` — no data in last ${CONFIG.freshHours} h`);
-    return `<button class="${cls}" data-code="${s.code}" title="${escapeHtml(title)}" ${fresh ? '' : 'disabled'}>${s.code.toUpperCase()}</button>`;
+    const info = store.get(s.code);
+    const checked = !!(info && info.checkedAt);
+    const stale = checked && !isFresh(s.code);
+    const cls = ['site-dot', stale ? 'stale' : '', s.code === currentCode ? 'active' : ''].join(' ').trim();
+    let title = `${s.name} (${TYPE_LABEL[s.type]})`;
+    if (stale) title += info.error ? ` — couldn't load (${info.error})` : ` — no data in last ${CONFIG.freshHours} h`;
+    return `<button class="${cls}" data-code="${s.code}" title="${escapeHtml(title)}" ${inCooldown(s.code) ? 'disabled' : ''}>${s.code.toUpperCase()}</button>`;
   }).join('');
 }
 
@@ -358,11 +406,31 @@ function showMessage(msg) {
 }
 
 // ─── Rotation ─────────────────────────────────────────────────
-function nextFreshSite() {
-  const start = Math.max(-1, SITES.findIndex(s => s.code === currentCode));
+// Sites are fetched one at a time, only when needed. As soon as a site is on
+// screen we start looking for the next one: walk forward through SITES,
+// re-requesting each candidate, until one has data from the last
+// `freshHours`. Errors, timeouts and stale sites are skipped. That search
+// gets the whole `rotateSeconds` to finish, and the card switches on time.
+
+let lookahead = null;                // Promise<site | null | undefined> for the next switch
+
+function setLoadingMessage(site) {
+  if (!firstRender) return;                       // only while nothing is on screen yet
+  $('#site-card').innerHTML = `<p class="cc-message">Checking ${escapeHtml(site.name)}…</p>`;
+}
+
+// Resolves to a fresh site, null if none, or undefined if superseded.
+async function findNextSite(fromCode, myGen) {
+  const start = SITES.findIndex(s => s.code === fromCode);   // -1 → start at the top
   for (let k = 1; k <= SITES.length; k++) {
-    const s = SITES[(start + k) % SITES.length];
-    if (isFresh(s.code)) return s;
+    if (myGen !== generation) return undefined;              // superseded (e.g. a chip click)
+    const site = SITES[(start + k) % SITES.length];          // last candidate is fromCode itself
+    if (inCooldown(site.code)) continue;
+    setLoadingMessage(site);
+    await fetchSite(site);
+    if (myGen !== generation) return undefined;
+    renderDots();
+    if (isFresh(site.code)) return site;
   }
   return null;
 }
@@ -376,17 +444,56 @@ function restartProgress() {
   bar.style.width = '100%';
 }
 
-async function advance(target) {
+// Put a site (or the "nothing reporting" message) on screen, then
+// immediately start finding the one after it.
+async function present(site, myGen) {
+  if (site) await showSite(site);
+  else showMessage(`No stations have reported in the last ${CONFIG.freshHours} hours. Checking again shortly…`);
+  if (myGen !== generation) return;
+
+  if (site) restartProgress();
+  else $('#progress-bar').style.width = '0';
+
+  lookahead = findNextSite(site ? site.code : currentCode, myGen);
   clearTimeout(rotateTimer);
-  const site = target || nextFreshSite();
-  if (site) {
-    await showSite(site);
-    restartProgress();
+  rotateTimer = setTimeout(() => tick(myGen), CONFIG.rotateSeconds * 1000);
+}
+
+// Scheduled switch: use the look-ahead result (waiting if it's still going).
+async function tick(myGen) {
+  let site = await lookahead;
+  if (site === undefined || myGen !== generation) return;
+  // It was fresh when fetched up to a minute ago; make sure it still is.
+  if (site && !isFresh(site.code)) site = await findNextSite(site.code, myGen);
+  if (site === undefined || myGen !== generation) return;
+  await present(site, myGen);
+}
+
+// First load, or a chip click: drop any look-ahead and start from here.
+async function jumpTo(target = null) {
+  clearTimeout(rotateTimer);
+  const myGen = ++generation;
+  let site;
+  if (target) {
+    await fetchSite(target);
+    if (myGen !== generation) return;
+    renderDots();
+    if (isFresh(target.code)) {
+      site = target;
+    } else if (currentCode) {
+      // Clicked site isn't reporting: stay on the current one, restart its timer.
+      restartProgress();
+      lookahead = findNextSite(currentCode, myGen);
+      rotateTimer = setTimeout(() => tick(myGen), CONFIG.rotateSeconds * 1000);
+      return;
+    } else {
+      site = await findNextSite(target.code, myGen);
+    }
   } else {
-    showMessage(`No stations have reported in the last ${CONFIG.freshHours} hours. Checking again shortly…`);
-    $('#progress-bar').style.width = '0';
+    site = await findNextSite(currentCode, myGen);
   }
-  rotateTimer = setTimeout(() => advance(), CONFIG.rotateSeconds * 1000);
+  if (site === undefined || myGen !== generation) return;
+  await present(site, myGen);
 }
 
 // ─── Demo data ────────────────────────────────────────────────
@@ -431,18 +538,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#site-dots').addEventListener('click', e => {
     const btn = e.target.closest('.site-dot');
     if (!btn || btn.disabled || btn.dataset.code === currentCode) return;
-    advance(SITES.find(s => s.code === btn.dataset.code));
+    jumpTo(SITES.find(s => s.code === btn.dataset.code));
   });
 
-  // Keep the 6-hour rule honest: re-fetch on a schedule. If the site on
-  // screen goes stale, the next rotation simply skips it.
-  setInterval(refreshAll, CONFIG.refreshMinutes * 60000);
-
-  // Show the first fresh site as soon as it arrives rather than waiting
-  // for every fetch to finish.
-  let started = false;
-  const tryStart = () => { if (!started && SITES.some(s => isFresh(s.code))) { started = true; advance(); } };
-  const pending = SITES.map(s => fetchSite(s).then(() => { renderDots(); tryStart(); }));
-  await Promise.all(pending);
-  if (!started) { started = true; advance(); }
+  renderDots();
+  jumpTo();                                      // first site shows as soon as one checks out
 });
