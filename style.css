@@ -1,0 +1,515 @@
+/* =============================================================
+   MCM Current Conditions — style.css
+   Light theme, WordPress 2024 compatible, no external fonts.
+   Tokens copied from the main viewer's style.css so this folder
+   stands alone in its own repo.
+
+   Scaling: every size is in rem, and the root font-size is fluid
+   (driven by viewport width AND height), so the same layout reads
+   on a phone, a laptop, and a lobby TV. Breakpoints below only
+   change layout (column count, fill-the-screen), not sizes.
+   ============================================================= */
+
+/* --- Tokens -------------------------------------------------- */
+:root {
+  --bg: #f8f8f7;
+  --surface: #ffffff;
+  --border: #e0ddd8;
+  --border-light: #ece9e4;
+  --text-primary: #1a1917;
+  --text-secondary: #5a574f;
+  --text-muted: #8a877f;
+  --accent: #2563eb;
+  --accent-light: #eff6ff;
+  --good: #2f9e44;
+  --series-a: #2563eb;           /* single value / first of a group (accent) */
+  --series-b: #0c8599;           /* second of a group (viewer palette teal) */
+  --series-c: #e8590c;
+  --radius: 0.43rem;
+  --radius-lg: 0.72rem;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+
+  --gap: 0.86rem;
+  --transition-ms: 550ms;
+}
+
+/* Fluid root size: 14px on phones/laptops → ~19px at 1080p → ~34px at 4K. */
+html {
+  font-size: clamp(14px, calc(0.6vmin + 0.45vw + 4px), 40px);
+}
+
+/* --- Reset --------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  font-size: 1rem;
+  color: var(--text-primary);
+  background: var(--bg);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  max-width: 86rem;
+  margin: 0 auto;
+  padding: 1.15rem 1.4rem 1.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+/* Opened directly (not in an iframe): fill the screen. */
+body:not(.embedded) #app { min-height: 100vh; min-height: 100dvh; }
+body:not(.embedded) #stage { flex: 1; display: flex; }
+body:not(.embedded) .site-card { flex: 1; display: flex; flex-direction: column; }
+body:not(.embedded) .tiles { flex: 1; }
+body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spare height; minSpan keeps them honest */
+
+/* --- Header -------------------------------------------------- */
+#cc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.86rem;
+  flex-wrap: wrap;
+}
+
+.cc-kicker {
+  display: flex;
+  align-items: center;
+  gap: 0.57rem;
+  font-size: 0.79rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.live-dot {
+  width: 0.57rem;
+  height: 0.57rem;
+  border-radius: 50%;
+  background: var(--good);
+  animation: pulse 2.4s ease-out infinite;
+}
+
+@keyframes pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(47, 158, 68, 0.45); }
+  70%  { box-shadow: 0 0 0 0.5rem rgba(47, 158, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(47, 158, 68, 0); }
+}
+
+#cc-clock {
+  font-family: var(--mono);
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+/* --- Stage + transition ------------------------------------- */
+#stage {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.site-card {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 1.4rem 1.6rem 1.6rem;
+  min-height: 22rem;
+  transition:
+    opacity var(--transition-ms) ease,
+    transform var(--transition-ms) cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.site-card.is-leaving  { opacity: 0; transform: translateX(-3%); }
+.site-card.is-entering { opacity: 0; transform: translateX(3%); transition: none; }
+
+/* Tiles cascade in after the card lands */
+.site-card.is-shown .tile {
+  animation: tile-in 480ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.site-card.is-shown .tile:nth-child(2) { animation-delay: 60ms; }
+.site-card.is-shown .tile:nth-child(3) { animation-delay: 120ms; }
+.site-card.is-shown .tile:nth-child(4) { animation-delay: 180ms; }
+.site-card.is-shown .tile:nth-child(5) { animation-delay: 240ms; }
+
+@keyframes tile-in {
+  from { opacity: 0; transform: translateY(0.7rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-card,
+  .site-card.is-leaving,
+  .site-card.is-entering { transform: none; }
+  .site-card.is-shown .tile { animation: none; }
+  .live-dot { animation: none; }
+}
+
+/* --- Site heading ------------------------------------------- */
+.site-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 0.57rem 1.4rem;
+  flex-wrap: wrap;
+  padding-bottom: 1rem;
+  margin-bottom: 1.3rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.site-name {
+  font-size: 2.4rem;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.015em;
+}
+
+.site-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.57rem;
+  margin-top: 0.43rem;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.site-code { font-family: var(--mono); color: var(--text-muted); }
+
+.type-pill {
+  padding: 0.14rem 0.64rem;
+  border: 1px solid var(--accent);
+  border-radius: 100px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 0.79rem;
+  font-weight: 600;
+}
+
+.obs-time {
+  text-align: right;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.obs-time strong {
+  display: block;
+  font-family: var(--mono);
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+/* --- Tiles --------------------------------------------------- */
+/* Default (tablet → TV): 3 columns, so 5 tiles sit 3 on top and
+   2 below, with the `wide` tile (wind / O₂) spanning two columns. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-flow: row dense;
+  gap: var(--gap);
+}
+
+.tile.wide { grid-column: span 2; }
+
+/* Wide grouped tile: put the readings side by side. */
+.tile.wide .pair { flex-direction: row; gap: 1rem 2.5rem; flex-wrap: wrap; }
+.tile.wide .pair-row { flex: 0 1 auto; grid-template-columns: auto auto; justify-content: start; column-gap: 1.2rem; }
+
+.tile {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.15rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.tile-label {
+  font-size: 0.79rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  line-height: 1.3;
+  min-height: 2.6em;            /* two lines, so numbers line up across tiles */
+}
+
+.tile-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.4rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+
+.tile-number {
+  font-size: 2.9rem;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.tile-unit {
+  font-size: 0.86rem;
+  font-family: var(--mono);
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tile-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.43rem;
+  min-height: 1.3rem;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+/* Wind direction, beside the speed */
+.wind-dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 1.2rem;
+  padding-left: 1.2rem;
+  border-left: 1px solid var(--border-light);
+  align-self: center;
+}
+
+.wind-arrow {
+  width: 2.4rem;
+  height: 2.4rem;
+  flex-shrink: 0;
+  color: var(--text-primary);
+}
+
+.wind-dir-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.wind-cardinal {
+  font-size: 1.9rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.wind-deg {
+  font-size: 0.79rem;
+  font-family: var(--mono);
+  color: var(--text-muted);
+}
+
+.tile.no-value .tile-number,
+.pair-row.no-value .tile-number { color: var(--text-muted); }
+
+/* Grouped tile (e.g. shallow + deep O₂) */
+.pair { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.pair-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "name value" "range range";
+  align-items: baseline;
+  column-gap: 0.5rem;
+}
+
+.pair-name {
+  grid-area: name;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.pair-row .tile-value { grid-area: value; justify-content: flex-end; }
+.pair-row .tile-number { font-size: 1.9rem; }
+
+.pair-range {
+  grid-area: range;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.swatch {
+  width: 1.1rem;
+  height: 0;
+  border-top: max(2px, 0.14rem) solid var(--series-a);
+  flex-shrink: 0;
+}
+.swatch.s-b { border-top-style: dashed; border-top-color: var(--series-b); }
+.swatch.s-c { border-top-style: dotted; border-top-color: var(--series-c); }
+
+/* --- Sparkline ----------------------------------------------- */
+.spark-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 2.6rem;
+  max-height: 8rem;             /* when embedded (sized to content) */
+  margin-top: 0.43rem;
+}
+
+.spark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.spark-line {
+  fill: none;
+  stroke: var(--series-a);
+  stroke-width: max(2px, 0.14rem);
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.spark-line.s-b { stroke: var(--series-b); stroke-dasharray: 5 3; }
+.spark-line.s-c { stroke: var(--series-c); stroke-dasharray: 1.5 3; }
+
+.spark-area { fill: var(--accent-light); }
+
+.spark-dot {
+  position: absolute;
+  width: 0.57rem;
+  height: 0.57rem;
+  margin: -0.285rem 0 0 -0.285rem;
+  border-radius: 50%;
+  background: var(--series-a);
+  box-shadow: 0 0 0 2px var(--surface);
+}
+.spark-dot.s-b { background: var(--series-b); }
+.spark-dot.s-c { background: var(--series-c); }
+
+.spark-caption {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* --- Messages ----------------------------------------------- */
+.cc-message {
+  margin: auto;
+  padding: 4rem 1rem;
+  text-align: center;
+  font-size: 1rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* --- Footer: site chips + progress -------------------------- */
+#cc-footer { display: flex; flex-direction: column; gap: 0.7rem; }
+
+#site-dots { display: flex; flex-wrap: wrap; gap: 0.43rem; }
+
+.site-dot {
+  padding: 0.2rem 0.64rem;
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  background: var(--surface);
+  font-family: var(--mono);
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.site-dot:hover { border-color: var(--accent); color: var(--accent); }
+
+.site-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.site-dot.stale {
+  color: var(--text-muted);
+  border-style: dashed;
+  cursor: default;
+  opacity: 0.7;
+}
+.site-dot.stale:hover { border-color: var(--border); color: var(--text-muted); }
+
+#progress {
+  height: 0.2rem;
+  background: var(--border-light);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+#progress-bar {
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  border-radius: 2px;
+}
+
+/* =============================================================
+   Layout breakpoints
+   ============================================================= */
+
+/* Large screens / TVs: drop the max-width, use the whole display,
+   and give the headline numbers more weight. */
+@media (min-width: 1600px) {
+  #app { max-width: none; padding: 2.2vh 2.5vw; }
+}
+@media (min-width: 1600px) and (orientation: landscape) {
+  body:not(.embedded) .site-name { font-size: 3rem; }
+  body:not(.embedded) .tile-number { font-size: 4.2rem; }
+  body:not(.embedded) .pair-row .tile-number { font-size: 2.6rem; }
+  body:not(.embedded) .wind-cardinal { font-size: 2.6rem; }
+  body:not(.embedded) .wind-arrow { width: 3.2rem; height: 3.2rem; }
+}
+
+/* Phones: 2 columns, wide tile spans the row (dense flow moves it last),
+   sizes nudged. */
+@media (max-width: 700px) {
+  #app { padding: 0.7rem 0.85rem 1.4rem; }
+  .site-card { padding: 1.1rem; min-height: 0; }
+  .site-name { font-size: 1.9rem; }
+  .obs-time { text-align: left; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .tile { padding: 0.8rem 0.85rem 0.6rem; }
+  .tile-number { font-size: 2.2rem; }
+  .tile.wide { grid-column: 1 / -1; }
+  .tile-label { min-height: 0; }
+}
+
+/* Very small phones: single column. */
+@media (max-width: 360px) {
+  .tiles { grid-template-columns: minmax(0, 1fr); }
+  .tile.wide .pair { flex-direction: column; }
+}
+
+/* Short landscape screens (phone held sideways): one compact row. */
+@media (max-height: 500px) and (orientation: landscape) {
+  body:not(.embedded) #app { min-height: 0; }
+  #app { padding: 0.6rem 0.85rem 1rem; }
+  .site-card { min-height: 0; padding: 0.9rem 1rem; }
+  .site-head { margin-bottom: 0.8rem; padding-bottom: 0.6rem; }
+  .site-name { font-size: 1.6rem; }
+  .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; }
+  .tile { padding: 0.6rem 0.7rem 0.5rem; }
+  .tile.wide { grid-column: auto; }
+  .tile.wide .pair { flex-direction: column; gap: 0.5rem; }
+  .tile-number { font-size: 1.7rem; }
+  .pair-row .tile-number { font-size: 1.3rem; }
+  .wind-dir { margin-left: 0.5rem; padding-left: 0.5rem; }
+  .wind-cardinal { font-size: 1.2rem; }
+  .wind-arrow { width: 1.6rem; height: 1.6rem; }
+  .tile-label { font-size: 0.7rem; }
+}

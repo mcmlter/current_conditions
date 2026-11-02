@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MCM Current Conditions</title>
+  <meta name="description"
+    content="Latest observations from McMurdo Dry Valleys LTER weather stations and lake buoys, rotating through sites with recent data." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div id="app">
+
+    <header id="cc-header">
+      <div class="cc-kicker">
+        <span class="live-dot" aria-hidden="true"></span>
+        Current Conditions
+      </div>
+      <div id="cc-clock" aria-label="Local time in the Dry Valleys"></div>
+    </header>
+
+    <main id="stage" aria-live="polite">
+      <section id="site-card" class="site-card">
+        <!-- populated by app.js -->
+        <p class="cc-message">Loading latest observations…</p>
+      </section>
+    </main>
+
+    <footer id="cc-footer">
+      <div id="site-dots" aria-label="Sites reporting in the last 6 hours"></div>
+      <div id="progress" aria-hidden="true"><div id="progress-bar"></div></div>
+    </footer>
+
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+  <script>
+    // Same iframe auto-height hook as the main viewer (for WordPress embeds).
+    function sendHeight() {
+      window.parent.postMessage({ frameHeight: document.body.scrollHeight }, '*');
+    }
+    window.addEventListener('load', sendHeight);
+    window.addEventListener('resize', sendHeight);
+    new ResizeObserver(sendHeight).observe(document.body);
+  </script>
+</body>
+
+</html>
