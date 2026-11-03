@@ -109,7 +109,21 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 }
 
 /* "Feels like" line under air temperature */
-.feels-like strong { font-weight: 600; color: var(--text-primary); }
+/* "Feels like" pill under air temperature, in the dashboard's light blue */
+.feels-like {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3em;
+  padding: 0.15rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 100px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 0.86rem;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.feels-like strong { font-weight: 600; color: inherit; }
 
 /* Pressure tendency reuses the wind-direction block, a size smaller
    (it sits in a single-width tile). */
