@@ -62,7 +62,7 @@ const clockFmtRaw = new Intl.DateTimeFormat('en-NZ', {
   hour: '2-digit', minute: '2-digit', hour12: false,
 });
 const timeFmt = { format: d => `${timeFmtRaw.format(d)} ${CONFIG.timeZoneLabel}` };
-const clockFmt = { format: d => `${clockFmtRaw.format(d)} ${CONFIG.timeZoneLabel}` };
+const clockFmt = clockFmtRaw;                    // header is labelled "UTC +13 (McMurdo Time)"
 
 function ago(d) {
   const min = Math.round((Date.now() - d) / 60000);
@@ -96,8 +96,9 @@ function inCooldown(code) {
 }
 
 // ─── Data loading ─────────────────────────────────────────────
-// The proxy returns the whole logger file, newest row first, so one request
-// covers any window (even across days). We stop parsing once past it.
+// The proxy returns rows newest first, trimmed to ?hours= back from the newest
+// row (one request covers any window, even across days). We stop parsing once
+// past the window, which also keeps working against a proxy that ignores ?hours.
 function parseCsv(text, site) {
   const lines = text.split(/\r?\n/);
   const header = lines[0].split(',');
@@ -117,7 +118,7 @@ function parseCsv(text, site) {
     if (newest - time > keepHours * HOUR) break;
     const row = { time };
     for (const v of vars) {
-      for (const f of [...seriesDefs(v).map(d => d.field), v.dirField, v.gustField]) {
+      for (const f of [...seriesDefs(v).map(d => d.field), v.dirField, v.gustField, v.windChill && v.windChill.windField]) {
         if (f && f in idx) row[f] = num(cells[idx[f]]);
       }
     }
@@ -137,7 +138,9 @@ async function fetchSite(site) {
       await sleep(150);                    // pretend there's a network
       rows = demoRows(site);
     } else {
-      const res = await fetchWithTimeout(`${CONFIG.proxyBase}/${site.type}/${site.code}`);
+      // Ask the proxy for just the recent window (newest row back), not the whole file.
+      const hours = Math.ceil(Math.max(CONFIG.trendHours, CONFIG.freshHours));
+      const res = await fetchWithTimeout(`${CONFIG.proxyBase}/${site.type}/${site.code}?hours=${hours}`);
       rows = parseCsv(await res.text(), site);
     }
     store.set(site.code, { rows, latest: rows.length ? rows[rows.length - 1].time : null, error: null, checkedAt });
@@ -250,6 +253,41 @@ function windArrow(fromDeg) {
     </g></svg>`;
 }
 
+// Wind chill, Environment Canada / US NWS (2001) formula. T in °C, V in km/h.
+// Only defined for T ≤ 10 °C and V > 4.8 km/h; null otherwise. Station wind is
+// measured at 3 m; the formula assumes 10 m wind, so this slightly understates it.
+function windChill(tC, vKmh) {
+  if (tC == null || vKmh == null || tC > 10 || vKmh <= 4.8) return null;
+  const v16 = Math.pow(vKmh, 0.16);
+  return 13.12 + 0.6215 * tC - 11.37 * v16 + 0.3965 * tC * v16;
+}
+
+// Change since the reading closest to `hours` before the latest one (within
+// 45 min of that time). Returns { label, delta } or null.
+function tendency(cfg, s) {
+  if (!cfg || s.value == null) return null;
+  const target = s.time - cfg.hours * HOUR;
+  let best = null;
+  for (const p of s.series) {
+    if (p.value == null) continue;
+    const off = Math.abs(p.time - target);
+    if (off <= 45 * 60000 && (!best || off < best.off)) best = { value: p.value, off };
+  }
+  if (!best) return null;
+  const delta = s.value - best.value;
+  const label = Math.abs(delta) < cfg.steady ? 'Steady' : delta > 0 ? 'Rising' : 'Falling';
+  return { label, delta };
+}
+
+function tendencyArrow(label) {
+  const rot = { Rising: 45, Steady: 90, Falling: 135 }[label];
+  return `<svg class="wind-arrow" viewBox="-8 -8 16 16" aria-hidden="true">
+    <g transform="rotate(${rot})">
+      <line x1="0" y1="6" x2="0" y2="-3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M0,-7 L-4,-1.5 L4,-1.5 Z" fill="currentColor"/>
+    </g></svg>`;
+}
+
 const rangeText = (s, d) => (s.min != null ? `${fmt(s.min, d)} to ${fmt(s.max, d)}` : 'no data');
 
 function singleTile(v, s, t0, t1, newest) {
@@ -276,8 +314,36 @@ function singleTile(v, s, t0, t1, newest) {
     sub = '<span>No recent reading</span>';
   }
 
+  // "Feels like" (wind chill), from the wind reading in the same row.
+  let ariaExtra = '';
+  if (v.windChill && has && s.last) {
+    const ms = s.last[v.windChill.windField];
+    if (ms != null) {
+      const wc = windChill(s.value, ms * 3.6);
+      const feels = wc == null ? s.value : wc;      // calm (or above 10 °C): feels like the air temp
+      sub = `<span class="feels-like">Feels like <strong>${fmt(feels, v.digits)} ${escapeHtml(v.unit)}</strong></span>` +
+        (sub ? `<span>· ${sub.replace(/^<span>|<\/span>$/g, '')}</span>` : '');
+      ariaExtra = `, feels like ${fmt(feels, v.digits)}`;
+    }
+  }
+
+  // Rising / Falling / Steady, beside the value.
+  const tend = tendency(v.tendency, s);
+  if (tend) {
+    const sign = tend.delta > 0 ? '+' : '';
+    dirHtml = `
+        <span class="wind-dir side-stat">
+          ${tendencyArrow(tend.label)}
+          <span class="wind-dir-text">
+            <span class="wind-cardinal">${tend.label}</span>
+            <span class="wind-deg">${sign}${fmt(tend.delta, v.digits)} ${escapeHtml(v.unit)} in ${v.tendency.hours} h</span>
+          </span>
+        </span>`;
+    ariaExtra = `, ${tend.label.toLowerCase()}`;
+  }
+
   return `
-    <article class="tile${v.wide ? ' wide' : ''}${has ? '' : ' no-value'}" aria-label="${escapeHtml(v.label)}: ${valueStr} ${escapeHtml(v.unit)}${dir != null && has ? ` from ${degToCardinal(dir)}` : ''}">
+    <article class="tile${v.wide ? ' wide' : ''}${has ? '' : ' no-value'}" aria-label="${escapeHtml(v.label)}: ${valueStr} ${escapeHtml(v.unit)}${dir != null && has ? ` from ${degToCardinal(dir)}` : ''}${ariaExtra}">
       <div class="tile-label">${escapeHtml(v.label)}</div>
       <div class="tile-value">
         <span class="tile-number">${valueStr}</span>

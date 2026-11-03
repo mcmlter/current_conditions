@@ -102,11 +102,34 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   100% { box-shadow: 0 0 0 0 rgba(47, 158, 68, 0); }
 }
 
+.cc-clock-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 0.57rem;
+}
+
+.cc-clock-label {
+  font-size: 0.79rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
 #cc-clock {
   font-family: var(--mono);
   font-size: 0.86rem;
   color: var(--text-secondary);
 }
+
+/* "Feels like" line under air temperature */
+.feels-like strong { font-weight: 600; color: var(--text-primary); }
+
+/* Pressure tendency reuses the wind-direction block, a size smaller
+   (it sits in a single-width tile). */
+.side-stat .wind-cardinal { font-size: 1.35rem; }
+.side-stat .wind-arrow { width: 1.9rem; height: 1.9rem; }
+.side-stat .wind-deg { white-space: nowrap; }
 
 /* --- Stage + transition ------------------------------------- */
 #stage {
@@ -473,6 +496,8 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   body:not(.embedded) .pair-row .tile-number { font-size: 2.6rem; }
   body:not(.embedded) .wind-cardinal { font-size: 2.6rem; }
   body:not(.embedded) .wind-arrow { width: 3.2rem; height: 3.2rem; }
+  body:not(.embedded) .side-stat .wind-cardinal { font-size: 1.9rem; }
+  body:not(.embedded) .side-stat .wind-arrow { width: 2.4rem; height: 2.4rem; }
 }
 
 /* Phones: 2 columns, wide tile spans the row (dense flow moves it last),
@@ -485,6 +510,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
   .tile { padding: 0.8rem 0.85rem 0.6rem; }
   .tile-number { font-size: 2.2rem; }
+  .side-stat { flex-basis: 100%; margin: 0.3rem 0 0; padding-left: 0; border-left: 0; }
   .tile.wide { grid-column: 1 / -1; }
   .tile-label { min-height: 0; }
 }

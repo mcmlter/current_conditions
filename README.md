@@ -2,8 +2,8 @@
 
 A live "current conditions" display for the
 [McMurdo Dry Valleys Long Term Ecological Research (MCM LTER)](https://mcm.lternet.edu)
-program in Antarctica. It shows the latest readings from one weather station or
-lake buoy at a time and moves on to the next site every minute. Sites that
+program in Antarctica. It shows the latest readings from one weather station at a
+time and moves on to the next station every minute. Sites that
 haven't reported in the last 12 hours are skipped automatically.
 
 The page works on phones, desktops and large lobby displays.
@@ -15,34 +15,29 @@ The page works on phones, desktops and large lobby displays.
 
 ## What's shown
 
-Each site gets five tiles. Each tile shows the most recent value, a trend line for
-the last 6 hours, and the 6-hour range.
-
-**Meteorological stations**
+Each station gets five tiles. Each tile shows the most recent value, plus a trend
+line and range for the 24 hours leading up to the station's latest observation.
 
 | Tile | Units | Notes |
 |---|---|---|
-| Air temperature | °C | At 3 m height |
+| Air temperature | °C | At 3 m height, with a "feels like" wind chill |
 | Relative humidity | % | At 3 m height |
 | Solar radiation | W/m² | Incoming shortwave |
 | Wind | kt | Average speed, direction, and peak gust |
-| Barometric pressure | hPa | |
-
-**Lake buoys**
-
-| Tile | Units | Notes |
-|---|---|---|
-| Air temperature | °C | |
-| Lake stage | m | Lake water level |
-| Water temperature | °C | At the level logger |
-| Underwater PAR | µmol/m²/s | Photosynthetically active radiation (moored sensor) |
-| O₂ saturation | % | Shallow (solid line) and deep (dashed line) sensors |
+| Barometric pressure | hPa | With a rising / steady / falling trend |
 
 ### Reading the display
 
 - **Wind direction** is the compass point the wind blows *from*, e.g. "WNW, from 282°".
   The arrow points the way the wind is blowing, matching the MCM live data viewer.
-- **Times** are shown in UTC+13, the time the field loggers keep year-round (the
+- **Feels like** is the wind chill, from the air temperature and average wind speed
+  (Environment Canada / US National Weather Service formula). It only applies at
+  or below 10 °C with wind above 4.8 km/h; otherwise it equals the air temperature.
+  Station wind is measured at 3 m rather than the formula's standard 10 m, so the
+  wind chill shown is slightly milder than a standard one would be.
+- **Pressure trend** compares the latest reading with the one 3 hours earlier:
+  *Rising* or *Falling* for a change of 1 hPa or more, otherwise *Steady*.
+- **Times** are shown in UTC +13 (McMurdo Time), the time the field loggers keep year-round (the
   same as NZ daylight time). "Last observation" is the logger's most recent record.
   Most sites log every 15 minutes.
 - **Site chips** along the bottom list every site in the rotation. Dashed, greyed-out
@@ -54,22 +49,18 @@ the last 6 hours, and the 6-hour range.
 
 ## Sites
 
-| Code | Site | Type |
-|---|---|---|
-| BOYM | Lake Bonney | Met station |
-| ELBBB | East Lake Bonney | Lake buoy |
-| WLBBB | West Lake Bonney | Lake buoy |
-| TARM | Taylor Glacier | Met station |
-| HO2M | Lake Hoare | Met station |
-| LHBB | Lake Hoare | Lake buoy |
-| CAAM | Canada Glacier | Met station |
-| FRLM | Lake Fryxell | Met station |
-| LFBB | Lake Fryxell | Lake buoy |
-| HODM | Howard Glacier | Met station |
-| COHM | Commonwealth Glacier | Met station |
-| EXEM | Explorer's Cove | Met station |
-| BRHM | Lake Brownworth | Met station |
-| VAAM | Lake Vanda | Met station |
-| VIAM | Victoria Valley | Met station |
+| Code | Station |
+|---|---|
+| BOYM | Lake Bonney |
+| TARM | Taylor Glacier |
+| HO2M | Lake Hoare |
+| CAAM | Canada Glacier |
+| FRLM | Lake Fryxell |
+| HODM | Howard Glacier |
+| COHM | Commonwealth Glacier |
+| EXEM | Explorer's Cove |
+| BRHM | Lake Brownworth |
+| VAAM | Lake Vanda |
+| VIAM | Victoria Valley |
 
 
