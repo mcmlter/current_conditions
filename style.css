@@ -432,17 +432,39 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 
 .swatch.s-avg { border-top: max(2px, 0.14rem) dashed var(--text-muted); }
 
-/* Record high / low for this date + hour (air temperature) */
-.tile-records {
+/* Top of a tile: label / value / sub on the left, extras (records) on the right.
+   Wraps the extras underneath when the tile is too narrow for both. */
+.tile-top {
   display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
   flex-wrap: wrap;
-  gap: 0.1rem 0.8rem;
-  font-size: 0.79rem;
-  color: var(--text-secondary);
+  gap: 0.5rem 1rem;
 }
 
-.rec-label {
-  flex-basis: 100%;
+.tile-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* Record high / low for this date + hour (air temperature): upper right */
+.tile-records {
+  display: grid;
+  grid-template-columns: auto auto auto;
+  align-items: baseline;
+  justify-content: end;
+  gap: 0.05rem 0.4rem;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+  text-align: right;
+  flex: 0 0 auto;
+}
+
+.tile-records .rec-label {
+  grid-column: 1 / -1;
   font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;

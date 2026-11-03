@@ -445,8 +445,8 @@ function singleTile(v, s, t0, t1, newest, code) {
       recordHtml = `
       <div class="tile-records">
         <span class="rec-label">Record for ${when}</span>
-        <span>High <span class="range-val">${fmt(hi[0], v.digits)}</span> <span class="rec-year">(${hi[1]})</span></span>
-        <span>Low <span class="range-val">${fmt(lo[0], v.digits)}</span> <span class="rec-year">(${lo[1]})</span></span>
+        <span>High</span><span class="range-val">${fmt(hi[0], v.digits)}</span><span class="rec-year">${hi[1]}</span>
+        <span>Low</span><span class="range-val">${fmt(lo[0], v.digits)}</span><span class="rec-year">${lo[1]}</span>
       </div>`;
       ariaExtra += `, record high ${fmt(hi[0], v.digits)} in ${hi[1]}, record low ${fmt(lo[0], v.digits)} in ${lo[1]}`;
     }
@@ -454,12 +454,16 @@ function singleTile(v, s, t0, t1, newest, code) {
 
   return `
     <article class="tile${v.wide ? ' wide' : ''}${has ? '' : ' no-value'}" aria-label="${escapeHtml(v.label)}: ${valueStr} ${escapeHtml(v.unit)}${dir != null && has ? ` from ${degToCardinal(dir)}` : ''}${ariaExtra}">
-      <div class="tile-label">${escapeHtml(v.label)}</div>
-      <div class="tile-value">
-        <span class="tile-number">${valueStr}</span>
-        <span class="tile-unit">${escapeHtml(v.unit)}</span>${dirHtml}
+      <div class="tile-top">
+        <div class="tile-main">
+          <div class="tile-label">${escapeHtml(v.label)}</div>
+          <div class="tile-value">
+            <span class="tile-number">${valueStr}</span>
+            <span class="tile-unit">${escapeHtml(v.unit)}</span>${dirHtml}
+          </div>
+          <div class="tile-sub">${sub}</div>
+        </div>${recordHtml}
       </div>
-      <div class="tile-sub">${sub}</div>${recordHtml}
       <div class="spark-wrap">${sparkline([{ series: s.series, cls: 's-a' }], t0, t1, v.minSpan, avg ? [{ series: avg, cls: 's-avg' }] : [])}</div>
       <div class="spark-caption"><span>${rangeHtml(s, v.digits)}</span>${avgKey}</div>
     </article>`;
