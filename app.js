@@ -295,7 +295,10 @@ function tendencyArrow(label) {
     </g></svg>`;
 }
 
-const rangeText = (s, d) => (s.min != null ? `${fmt(s.min, d)} to ${fmt(s.max, d)}` : 'no data');
+// "24 h range −20.6 to −12.3" with the values emphasised; '' when there's no data
+// (the caption is then left empty so the tile keeps its height).
+const rangeHtml = (s, d, label = `${CONFIG.trendHours} h range:`) => (s.min == null ? '' :
+  `${label} <span class="range-val">${fmt(s.min, d)}</span> to <span class="range-val">${fmt(s.max, d)}</span>`);
 
 function singleTile(v, s, t0, t1, newest) {
   const has = s.value != null;
@@ -360,7 +363,7 @@ function singleTile(v, s, t0, t1, newest) {
       </div>
       <div class="tile-sub">${sub}</div>
       <div class="spark-wrap">${sparkline([{ series: s.series, cls: 's-a' }], t0, t1, v.minSpan)}</div>
-      <div class="spark-caption">${CONFIG.trendHours} h range ${rangeText(s, v.digits)}</div>
+      <div class="spark-caption">${rangeHtml(s, v.digits)}</div>
     </article>`;
 }
 
@@ -376,7 +379,7 @@ function groupTile(v, sums, t0, t1) {
           <span class="tile-number">${has ? fmt(s.value, v.digits) : '—'}</span>
           <span class="tile-unit">${escapeHtml(v.unit)}</span>
         </span>
-        <span class="pair-range">${CONFIG.trendHours} h ${rangeText(s, v.digits)}</span>
+        <span class="pair-range">${rangeHtml(s, v.digits, `${CONFIG.trendHours} h`)}</span>
       </div>`;
   }).join('');
   const label = v.series.map((d, i) => `${d.name} ${sums[i].value != null ? fmt(sums[i].value, v.digits) : 'no reading'}`).join(', ');
@@ -409,7 +412,6 @@ function cardHtml(site) {
       <div>
         <h1 class="site-name">${escapeHtml(site.name)}</h1>
         <div class="site-meta">
-          <span class="type-pill">${TYPE_LABEL[site.type]}</span>
           <span class="site-code">${site.code.toUpperCase()}</span>
         </div>
       </div>

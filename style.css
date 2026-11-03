@@ -88,20 +88,6 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   color: var(--text-muted);
 }
 
-.live-dot {
-  width: 0.57rem;
-  height: 0.57rem;
-  border-radius: 50%;
-  background: var(--good);
-  animation: pulse 2.4s ease-out infinite;
-}
-
-@keyframes pulse {
-  0%   { box-shadow: 0 0 0 0 rgba(47, 158, 68, 0.45); }
-  70%  { box-shadow: 0 0 0 0.5rem rgba(47, 158, 68, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(47, 158, 68, 0); }
-}
-
 .cc-clock-wrap {
   display: flex;
   align-items: baseline;
@@ -173,7 +159,6 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   .site-card.is-leaving,
   .site-card.is-entering { transform: none; }
   .site-card.is-shown .tile { animation: none; }
-  .live-dot { animation: none; }
 }
 
 /* --- Site heading ------------------------------------------- */
@@ -205,16 +190,6 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 }
 
 .site-code { font-family: var(--mono); color: var(--text-muted); }
-
-.type-pill {
-  padding: 0.14rem 0.64rem;
-  border: 1px solid var(--accent);
-  border-radius: 100px;
-  background: var(--accent-light);
-  color: var(--accent);
-  font-size: 0.79rem;
-  font-weight: 600;
-}
 
 .obs-time {
   text-align: right;
@@ -430,6 +405,16 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 .spark-caption {
   font-size: 0.75rem;
   color: var(--text-muted);
+  min-height: 1.5em;            /* keeps tiles level when the range is hidden */
+}
+
+/* Min / max values in the range captions */
+.range-val {
+  font-family: var(--mono);
+  font-size: 1.08em;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 /* --- Messages ----------------------------------------------- */
