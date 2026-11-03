@@ -109,7 +109,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 }
 
 .cc-clock-label {
-  font-size: 0.79rem;
+  font-size: 0.64rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -227,6 +227,14 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   font-family: var(--mono);
   font-size: 1rem;
   color: var(--text-primary);
+}
+
+/* Time-zone suffix on observation times ("UTC+13"): much smaller than the time */
+.tz {
+  font-size: 0.62em;
+  font-weight: 400;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
 }
 
 /* --- Tiles --------------------------------------------------- */

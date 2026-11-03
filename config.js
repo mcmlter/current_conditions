@@ -37,13 +37,14 @@ const MS_TO_KT = 1.94384;
 // series = optional list of {field, name} to show several readings in one tile
 // wide   = span two columns (3-column desktop grid: 3 tiles on top, wide + 1 below)
 // minSpan = smallest y-range the sparkline draws (keeps sensor noise flat)
+// badIfAllZero = treat as no data if every reading in the trend window is exactly 0
 // windChill = { windField }: show "Feels like" from this wind column (m/s, same row)
 // tendency  = { hours, steady }: Rising/Falling vs. the reading `hours` earlier;
 //             changes smaller than `steady` (in display units) count as Steady
 const VARIABLES = {
   met: [
     { id: 'air_temp', field: 'air_temp_3m', label: 'Air Temperature', unit: '°C', digits: 1, minSpan: 2, windChill: { windField: 'wind_spd_avg' } },
-    { id: 'rh', field: 'rel_hum_3m', label: 'Relative Humidity', unit: '%', digits: 0, minSpan: 10 },
+    { id: 'rh', field: 'rel_hum_3m', label: 'Relative Humidity', unit: '%', digits: 0, minSpan: 10, badIfAllZero: true },
     { id: 'solar', field: 'sw_rad_in', label: 'Solar Radiation', unit: 'W/m²', digits: 0, minSpan: 50 },
     { id: 'wind', wide: true, field: 'wind_spd_avg', label: 'Wind', unit: 'kt', digits: 1, minSpan: 5, scale: MS_TO_KT, dirField: 'wind_direction', gustField: 'wind_spd_max' },
     { id: 'pressure', field: 'barom_pres', label: 'Pressure', unit: 'hPa', digits: 1, minSpan: 2, tendency: { hours: 3, steady: 1 } },

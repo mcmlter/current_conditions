@@ -61,7 +61,8 @@ const clockFmtRaw = new Intl.DateTimeFormat('en-NZ', {
   timeZone: CONFIG.timeZone, weekday: 'short', day: 'numeric', month: 'short',
   hour: '2-digit', minute: '2-digit', hour12: false,
 });
-const timeFmt = { format: d => `${timeFmtRaw.format(d)} ${CONFIG.timeZoneLabel}` };
+// Returns HTML: the zone label is wrapped so it can be styled small.
+const timeFmt = { format: d => `${timeFmtRaw.format(d)} <span class="tz">${CONFIG.timeZoneLabel}</span>` };
 const clockFmt = clockFmtRaw;                    // header is labelled "UTC +13 (McMurdo Time)"
 
 function ago(d) {
@@ -175,7 +176,9 @@ function seriesDefs(v) {
 }
 
 // latestTime = the site's most recent observation (the trend window hangs off it).
-function summarizeField(field, scale, rows, latestTime) {
+// opts.badIfAllZero: a sensor that read exactly 0 for the whole trend window is
+// broken (e.g. RH stuck at 0 %), so treat it as no data.
+function summarizeField(field, scale, rows, latestTime, opts = {}) {
   const get = r => (r[field] == null ? null : r[field] * (scale || 1));
   // Latest value: newest non-empty reading within `freshHours` of *now*, so a
   // tile never shows a reading older than that (dash instead).
@@ -189,6 +192,10 @@ function summarizeField(field, scale, rows, latestTime) {
   const trendStart = latestTime - CONFIG.trendHours * HOUR;
   const series = rows.filter(r => r.time >= trendStart).map(r => ({ time: r.time, value: get(r) }));
   const vals = series.map(p => p.value).filter(x => x != null);
+  if (opts.badIfAllZero && vals.length && vals.every(x => x === 0)) {
+    return { value: null, time: null, last: null, bad: true,
+      series: series.map(p => ({ time: p.time, value: null })), min: null, max: null };
+  }
   return {
     value: last ? get(last) : null,
     time: last ? last.time : null,
@@ -310,6 +317,8 @@ function singleTile(v, s, t0, t1, newest) {
     if (gust != null) sub = `<span>Gust ${fmt(gust, v.digits)} ${escapeHtml(v.unit)}</span>`;
   } else if (has && newest - s.time > HOUR) {
     sub = `<span>as of ${timeFmt.format(s.time)}</span>`;
+  } else if (s.bad) {
+    sub = '<span>No data</span>';
   } else if (!has) {
     sub = '<span>No recent reading</span>';
   }
@@ -384,7 +393,7 @@ function tileHtml(v, rows, t0, t1, newest) {
   if (v.series) {
     return groupTile(v, v.series.map(d => summarizeField(d.field, v.scale, rows, newest)), t0, t1);
   }
-  return singleTile(v, summarizeField(v.field, v.scale, rows, newest), t0, t1, newest);
+  return singleTile(v, summarizeField(v.field, v.scale, rows, newest, { badIfAllZero: v.badIfAllZero }), t0, t1, newest);
 }
 
 function cardHtml(site) {
