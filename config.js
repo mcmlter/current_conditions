@@ -26,6 +26,10 @@ const CONFIG = {
   // Loggers record in fixed UTC+13. The proxy stamps rows with "+13:00";
   // this is used only if a timestamp arrives without an offset.
   loggerUtcOffset: '+13:00',
+
+  // Pre-computed historical averages / records (tools/build_climatology.py).
+  // Set to null to turn the average lines and records off.
+  climatologyPath: 'climatology',
 };
 
 const MS_TO_KT = 1.94384;
@@ -37,15 +41,17 @@ const MS_TO_KT = 1.94384;
 // series = optional list of {field, name} to show several readings in one tile
 // wide   = span two columns (3-column desktop grid: 3 tiles on top, wide + 1 below)
 // minSpan = smallest y-range the sparkline draws (keeps sensor noise flat)
+// clim    = climatology key for a dashed historical-average line (air_temp, rh, solar)
+// records = climatology key for the record high/low at this date + hour (air_temp)
 // badIfAllZero = treat as no data if every reading in the trend window is exactly 0
 // windChill = { windField }: show "Feels like" from this wind column (m/s, same row)
 // tendency  = { hours, steady }: Rising/Falling vs. the reading `hours` earlier;
 //             changes smaller than `steady` (in display units) count as Steady
 const VARIABLES = {
   met: [
-    { id: 'air_temp', field: 'air_temp_3m', label: 'Air Temperature', unit: '°C', digits: 1, minSpan: 2, windChill: { windField: 'wind_spd_avg' } },
-    { id: 'rh', field: 'rel_hum_3m', label: 'Relative Humidity', unit: '%', digits: 0, minSpan: 10, badIfAllZero: true },
-    { id: 'solar', field: 'sw_rad_in', label: 'Solar Radiation', unit: 'W/m²', digits: 0, minSpan: 50 },
+    { id: 'air_temp', field: 'air_temp_3m', label: 'Air Temperature', unit: '°C', digits: 1, minSpan: 2, windChill: { windField: 'wind_spd_avg' }, clim: 'air_temp', records: 'air_temp' },
+    { id: 'rh', field: 'rel_hum_3m', label: 'Relative Humidity', unit: '%', digits: 0, minSpan: 10, badIfAllZero: true, clim: 'rh' },
+    { id: 'solar', field: 'sw_rad_in', label: 'Solar Radiation', unit: 'W/m²', digits: 0, minSpan: 50, clim: 'solar' },
     { id: 'wind', wide: true, field: 'wind_spd_avg', label: 'Wind', unit: 'kt', digits: 1, minSpan: 5, scale: MS_TO_KT, dirField: 'wind_direction', gustField: 'wind_spd_max' },
     { id: 'pressure', field: 'barom_pres', label: 'Pressure', unit: 'hPa', digits: 1, minSpan: 2, tendency: { hours: 3, steady: 1 } },
   ],
@@ -63,5 +69,5 @@ const SITES = [
   { code: 'exem', type: 'met', name: "Explorer's Cove" },
   { code: 'brhm', type: 'met', name: 'Lake Brownworth' },
   { code: 'vaam', type: 'met', name: 'Lake Vanda' },
-  { code: 'viam', type: 'met', name: 'Victoria Valley' },
+  { code: 'viam', type: 'met', name: 'Lake Vida' },
 ];

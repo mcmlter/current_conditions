@@ -403,10 +403,54 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 .spark-dot.s-c { background: var(--series-c); }
 
 .spark-caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 0.8rem;
   font-size: 0.75rem;
   color: var(--text-muted);
   min-height: 1.5em;            /* keeps tiles level when the range is hidden */
 }
+
+/* Historical average: dashed grey line behind the data, with a key */
+.spark-ref {
+  fill: none;
+  stroke: var(--text-muted);
+  stroke-width: max(1.5px, 0.1rem);
+  stroke-dasharray: 4 3;
+  stroke-linecap: round;
+  opacity: 0.85;
+}
+
+.avg-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  white-space: nowrap;
+}
+
+.swatch.s-avg { border-top: max(2px, 0.14rem) dashed var(--text-muted); }
+
+/* Record high / low for this date + hour (air temperature) */
+.tile-records {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.1rem 0.8rem;
+  font-size: 0.79rem;
+  color: var(--text-secondary);
+}
+
+.rec-label {
+  flex-basis: 100%;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.rec-year { color: var(--text-muted); font-size: 0.9em; }
 
 /* Min / max values in the range captions */
 .range-val {

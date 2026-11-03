@@ -20,9 +20,12 @@ line and range for the 24 hours leading up to the station's latest observation.
 
 | Tile | Units | Notes |
 |---|---|---|
-| Air temperature | °C | At 3 m height, with a "feels like" wind chill |
+| Air temperature | °C | At 3 m height, with a "feels like" wind chill and record high/low |
 | Relative humidity | % | At 3 m height |
 | Solar radiation | W/m² | Incoming shortwave |
+
+The air temperature, humidity and solar tiles also show the **historical average**
+for the same dates and times of day as a dashed grey line behind the trend.
 | Wind | kt | Average speed, direction, and peak gust |
 | Barometric pressure | hPa | With a rising / steady / falling trend |
 
@@ -35,6 +38,12 @@ line and range for the 24 hours leading up to the station's latest observation.
   or below 10 °C with wind above 4.8 km/h; otherwise it equals the air temperature.
   Station wind is measured at 3 m rather than the formula's standard 10 m, so the
   wind chill shown is slightly milder than a standard one would be.
+- **Historical average** (dashed line) is the long-term mean for each hour of the
+  day on those calendar dates, from the station's quality-controlled record on EDI.
+  It's pooled over a two-week window around each date so it isn't noisy. The key
+  under the chart gives the years it covers.
+- **Record high / low** is the warmest and coldest air temperature ever recorded on
+  that calendar date during that hour of the latest observation, with the year.
 - **Pressure trend** compares the latest reading with the one 3 hours earlier:
   *Rising* or *Falling* for a change of 1 hPa or more, otherwise *Steady*.
 - **Times** are shown in UTC +13 (McMurdo Time), the time the field loggers keep year-round (the
@@ -61,6 +70,24 @@ line and range for the 24 hours leading up to the station's latest observation.
 | EXEM | Explorer's Cove |
 | BRHM | Lake Brownworth |
 | VAAM | Lake Vanda |
-| VIAM | Victoria Valley |
+| VIAM | Lake Vida |
 
+## Updating the historical data
+
+The averages and records are pre-computed into `climatology/<station>/<MM>.json`
+(one small file per station per month) by `tools/build_climatology.py`, from the
+MCM LTER met data on EDI. To build or refresh them (needs Python 3.9+ and pandas):
+
+1. Put each station's EDI package ID in `tools/climatology_sources.json`, e.g.
+   `"boym": { "edi": "knb-lter-mcm.XXXX" }`, or point at downloaded CSVs with
+   `"csv": ["path/to/file.csv"]`.
+2. If EDI asks for an API key, create one in EDI's IAM (avatar menu → Access Keys)
+   and either `export EDI_API_KEY=...` or save it in `tools/.edi_key` (git-ignored).
+   The script adds it to each request; without one it connects anonymously.
+3. Check the columns are found: `python tools/build_climatology.py --check`
+4. Build: `python tools/build_climatology.py`, then commit the `climatology/` folder.
+
+Source timestamps are assumed to be UTC+13, like the loggers (`--utc-offset` changes
+that). Values carrying a data flag are left out. Stations without files simply show
+no average line or records.
 

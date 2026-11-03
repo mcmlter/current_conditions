@@ -1,0 +1,14 @@
+{
+  "_help": "EDI package per station, from https://mcm.lternet.edu/meteorology-datasets/ (the script uses each package's newest revision). Optional keys per station: entity, station, columns, time_format; see the top of build_climatology.py. Run: python tools/build_climatology.py",
+  "boym": { "edi": "knb-lter-mcm.7003", "_name": "Lake Bonney (BOYM)", "entity": "high-frequency" },
+  "tarm": { "edi": "knb-lter-mcm.7013", "_name": "Taylor Glacier (TARM)", "entity": "high-frequency" },
+  "ho2m": { "edi": "knb-lter-mcm.7011", "station": "HOEM", "_name": "Lake Hoare: EDI package is HOEM; live feed is HO2M", "entity": "high-frequency" },
+  "caam": { "edi": "knb-lter-mcm.7006", "_name": "Canada Glacier (CAAM)", "entity": "high-frequency" },
+  "frlm": { "edi": "knb-lter-mcm.7010", "_name": "Lake Fryxell (FRLM)", "entity": "high-frequency" },
+  "hodm": { "edi": "knb-lter-mcm.7012", "_name": "Howard Glacier (HODM)", "entity": "high-frequency" },
+  "cohm": { "edi": "knb-lter-mcm.7007", "_name": "Commonwealth Glacier (COHM)", "entity": "high-frequency" },
+  "exem": { "edi": "knb-lter-mcm.7008", "_name": "Explorers Cove (EXEM)", "entity": "high-frequency" },
+  "brhm": { "edi": "knb-lter-mcm.7005", "_name": "Lake Brownworth (BRHM)", "entity": "high-frequency" },
+  "vaam": { "edi": "knb-lter-mcm.7015", "_name": "Lake Vanda (VAAM)", "entity": "high-frequency" },
+  "viam": { "edi": "knb-lter-mcm.7016", "_name": "Lake Vida (VIAM)", "entity": "high-frequency" }
+}

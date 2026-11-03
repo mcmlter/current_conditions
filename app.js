@@ -61,6 +61,14 @@ const clockFmtRaw = new Intl.DateTimeFormat('en-NZ', {
   timeZone: CONFIG.timeZone, weekday: 'short', day: 'numeric', month: 'short',
   hour: '2-digit', minute: '2-digit', hour12: false,
 });
+// "3 Nov, 02:00" style label for the hour a record applies to.
+const recordWhenFmt = { format: d => {
+  const c = loggerClock(d);
+  const mon = new Intl.DateTimeFormat('en-NZ', { month: 'short', timeZone: 'UTC' })
+    .format(new Date(Date.UTC(2000, c.month - 1, 1)));
+  return `${c.day} ${mon}, ${String(c.hour).padStart(2, '0')}:00`;
+} };
+
 // Returns HTML: the zone label is wrapped so it can be styled small.
 const timeFmt = { format: d => `${timeFmtRaw.format(d)} <span class="tz">${CONFIG.timeZoneLabel}</span>` };
 const clockFmt = clockFmtRaw;                    // header is labelled "UTC +13 (McMurdo Time)"
@@ -144,7 +152,10 @@ async function fetchSite(site) {
       const res = await fetchWithTimeout(`${CONFIG.proxyBase}/${site.type}/${site.code}?hours=${hours}`);
       rows = parseCsv(await res.text(), site);
     }
-    store.set(site.code, { rows, latest: rows.length ? rows[rows.length - 1].time : null, error: null, checkedAt });
+    const latest = rows.length ? rows[rows.length - 1].time : null;
+    store.set(site.code, { rows, latest, error: null, checkedAt });
+    await loadClimFor(site.code, latest);
+    for (const [k, p] of climCache) { const doc = await p; if (doc) climDocs.set(k, doc); }
   } catch (e) {
     const prev = store.get(site.code);
     store.set(site.code, {
@@ -152,6 +163,58 @@ async function fetchSite(site) {
     });
     console.warn(`[current-conditions] ${site.code}: ${e.message}`);
   }
+}
+
+// ─── Historical climatology (pre-computed, see tools/build_climatology.py) ───
+// climatology/<code>/<MM>.json: per day-of-month × hour (UTC+13 clock) long-term
+// means and record highs/lows. Missing files just mean no average line.
+const climCache = new Map();          // "code/MM" → Promise<doc | null>
+const LOGGER_OFFSET_MS = offsetMinutes(CONFIG.loggerUtcOffset) * 60000;
+
+// Instant → { month, day, hour } on the logger clock (independent of viewer zone).
+function loggerClock(t) {
+  const d = new Date(+t + LOGGER_OFFSET_MS);
+  return { month: d.getUTCMonth() + 1, day: d.getUTCDate(), hour: d.getUTCHours() };
+}
+
+function loadClimMonth(code, month) {
+  const key = `${code}/${String(month).padStart(2, '0')}`;
+  if (!climCache.has(key)) {
+    climCache.set(key, fetch(`${CONFIG.climatologyPath}/${key}.json`)
+      .then(r => (r.ok ? r.json() : null))
+      .catch(() => null));
+  }
+  return climCache.get(key);
+}
+
+// Make sure the months covering a site's trend window are loaded.
+async function loadClimFor(code, latest) {
+  if (!CONFIG.climatologyPath || !latest) return;
+  const months = new Set([loggerClock(latest).month,
+    loggerClock(latest - CONFIG.trendHours * HOUR).month]);
+  await Promise.all([...months].map(m => loadClimMonth(code, m)));
+}
+
+// Synchronous lookup once loaded: the climatology doc + indices for instant t.
+const climDocs = new Map();           // "code/MM" → doc (filled as promises resolve)
+function climSlot(code, t) {
+  const c = loggerClock(t);
+  const doc = climDocs.get(`${code}/${String(c.month).padStart(2, '0')}`);
+  return doc ? { doc, d: c.day - 1, h: c.hour } : null;
+}
+
+// Hourly average line across [t0, t1], each value plotted at the middle of its hour.
+function climSeries(code, key, t0, t1) {
+  const pts = [];
+  const start = Math.floor((t0 - LOGGER_OFFSET_MS) / HOUR) * HOUR + LOGGER_OFFSET_MS;
+  for (let t = start; t <= t1; t += HOUR) {
+    const mid = t + HOUR / 2;
+    if (mid < t0 || mid > t1) continue;
+    const s = climSlot(code, mid);
+    const v = s && s.doc.mean[key] && s.doc.mean[key][s.d] ? s.doc.mean[key][s.d][s.h] : null;
+    pts.push({ time: new Date(mid), value: v });
+  }
+  return pts.some(p => p.value != null) ? pts : null;
 }
 
 async function fetchWithTimeout(url) {
@@ -221,10 +284,13 @@ function segments(series) {
 
 // lines: [{ series, cls }] — all share one y-scale (same unit).
 // minSpan: smallest y-range drawn, so sensor noise doesn't look like a trend.
-function sparkline(lines, t0, t1, minSpan = 0) {
+// refs: [{ series, cls }] drawn behind the data (e.g. the historical average),
+// sharing the y-scale, with no fill or end dot.
+function sparkline(lines, t0, t1, minSpan = 0, refs = []) {
   const W = 200, H = 40, PAD = 3;
-  const vals = lines.flatMap(l => l.series.map(p => p.value)).filter(v => v != null);
-  if (vals.length < 2) return '';
+  const dataVals = lines.flatMap(l => l.series.map(p => p.value)).filter(v => v != null);
+  if (dataVals.length < 2) return '';
+  const vals = dataVals.concat(refs.flatMap(r => r.series.map(p => p.value)).filter(v => v != null));
   let lo = Math.min(...vals), hi = Math.max(...vals);
   const span = Math.max(hi - lo, minSpan, 1e-6);
   const mid = (hi + lo) / 2;
@@ -233,7 +299,12 @@ function sparkline(lines, t0, t1, minSpan = 0) {
   const y = v => PAD + (1 - (v - lo) / (hi - lo)) * (H - 2 * PAD);
   const pt = p => `${x(p.time).toFixed(1)},${y(p.value).toFixed(1)}`;
 
-  let paths = '', dots = '';
+  // Layers, bottom to top: data fill, reference (average) lines, data lines.
+  let fills = '', refPaths = '', paths = '', dots = '';
+  for (const { series, cls } of refs) {
+    const segs = segments(series);
+    if (segs.length) refPaths += `<path class="spark-ref ${cls}" d="${segs.map(sg => 'M' + sg.map(pt).join('L')).join('')}" vector-effect="non-scaling-stroke" />`;
+  }
   for (const { series, cls } of lines) {
     const segs = segments(series);
     if (!segs.length) continue;
@@ -241,13 +312,14 @@ function sparkline(lines, t0, t1, minSpan = 0) {
       const area = segs.filter(sg => sg.length > 1).map(sg =>
         `M${x(sg[0].time).toFixed(1)},${H}L` + sg.map(pt).join('L') +
         `L${x(sg[sg.length - 1].time).toFixed(1)},${H}Z`).join('');
-      paths += `<path class="spark-area" d="${area}" />`;
+      fills += `<path class="spark-area" d="${area}" />`;
     }
     paths += `<path class="spark-line ${cls}" d="${segs.map(sg => 'M' + sg.map(pt).join('L')).join('')}" vector-effect="non-scaling-stroke" />`;
     const ls = segs[segs.length - 1], lp = ls[ls.length - 1];
     // End dot is an HTML overlay so it stays round when the SVG stretches.
     dots += `<span class="spark-dot ${cls}" style="left:${(x(lp.time) / W * 100).toFixed(2)}%;top:${(y(lp.value) / H * 100).toFixed(2)}%"></span>`;
   }
+  paths = fills + refPaths + paths;
   return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${paths}</svg>${dots}`;
 }
 
@@ -300,7 +372,7 @@ function tendencyArrow(label) {
 const rangeHtml = (s, d, label = `${CONFIG.trendHours} h range:`) => (s.min == null ? '' :
   `${label} <span class="range-val">${fmt(s.min, d)}</span> to <span class="range-val">${fmt(s.max, d)}</span>`);
 
-function singleTile(v, s, t0, t1, newest) {
+function singleTile(v, s, t0, t1, newest, code) {
   const has = s.value != null;
   const valueStr = has ? fmt(s.value, v.digits) : '—';
   let sub = '';
@@ -354,6 +426,32 @@ function singleTile(v, s, t0, t1, newest) {
     ariaExtra = `, ${tend.label.toLowerCase()}`;
   }
 
+  // Historical average line (only alongside real data) and its key.
+  const avg = v.clim && s.min != null ? climSeries(code, v.clim, t0, t1) : null;
+  const years = avg && climSlot(code, t1) ? climSlot(code, t1).doc.years : null;
+  const avgKey = avg
+    ? `<span class="avg-key"><span class="swatch s-avg" aria-hidden="true"></span>${years ? `${years[0]}–${years[1]} avg` : 'Historical avg'}</span>`
+    : '';
+
+  // Record high / low for this calendar date and hour.
+  let recordHtml = '';
+  if (v.records && has) {
+    const slot = climSlot(code, s.time);
+    const rec = slot && slot.doc.record && slot.doc.record[v.records];
+    const hi = rec && rec.high[slot.d] && rec.high[slot.d][slot.h];
+    const lo = rec && rec.low[slot.d] && rec.low[slot.d][slot.h];
+    if (hi && hi[0] != null && lo && lo[0] != null) {
+      const when = recordWhenFmt.format(s.time);
+      recordHtml = `
+      <div class="tile-records">
+        <span class="rec-label">Record for ${when}</span>
+        <span>High <span class="range-val">${fmt(hi[0], v.digits)}</span> <span class="rec-year">(${hi[1]})</span></span>
+        <span>Low <span class="range-val">${fmt(lo[0], v.digits)}</span> <span class="rec-year">(${lo[1]})</span></span>
+      </div>`;
+      ariaExtra += `, record high ${fmt(hi[0], v.digits)} in ${hi[1]}, record low ${fmt(lo[0], v.digits)} in ${lo[1]}`;
+    }
+  }
+
   return `
     <article class="tile${v.wide ? ' wide' : ''}${has ? '' : ' no-value'}" aria-label="${escapeHtml(v.label)}: ${valueStr} ${escapeHtml(v.unit)}${dir != null && has ? ` from ${degToCardinal(dir)}` : ''}${ariaExtra}">
       <div class="tile-label">${escapeHtml(v.label)}</div>
@@ -361,9 +459,9 @@ function singleTile(v, s, t0, t1, newest) {
         <span class="tile-number">${valueStr}</span>
         <span class="tile-unit">${escapeHtml(v.unit)}</span>${dirHtml}
       </div>
-      <div class="tile-sub">${sub}</div>
-      <div class="spark-wrap">${sparkline([{ series: s.series, cls: 's-a' }], t0, t1, v.minSpan)}</div>
-      <div class="spark-caption">${rangeHtml(s, v.digits)}</div>
+      <div class="tile-sub">${sub}</div>${recordHtml}
+      <div class="spark-wrap">${sparkline([{ series: s.series, cls: 's-a' }], t0, t1, v.minSpan, avg ? [{ series: avg, cls: 's-avg' }] : [])}</div>
+      <div class="spark-caption"><span>${rangeHtml(s, v.digits)}</span>${avgKey}</div>
     </article>`;
 }
 
@@ -392,11 +490,11 @@ function groupTile(v, sums, t0, t1) {
     </article>`;
 }
 
-function tileHtml(v, rows, t0, t1, newest) {
+function tileHtml(v, rows, t0, t1, newest, code) {
   if (v.series) {
     return groupTile(v, v.series.map(d => summarizeField(d.field, v.scale, rows, newest)), t0, t1);
   }
-  return singleTile(v, summarizeField(v.field, v.scale, rows, newest, { badIfAllZero: v.badIfAllZero }), t0, t1, newest);
+  return singleTile(v, summarizeField(v.field, v.scale, rows, newest, { badIfAllZero: v.badIfAllZero }), t0, t1, newest, code);
 }
 
 function cardHtml(site) {
@@ -404,7 +502,7 @@ function cardHtml(site) {
   const t1 = latest.getTime();
   const t0 = t1 - CONFIG.trendHours * HOUR;
   const tiles = VARIABLES[site.type]
-    .map(v => tileHtml(v, rows, t0, t1, latest))
+    .map(v => tileHtml(v, rows, t0, t1, latest, site.code))
     .join('');
 
   return `
