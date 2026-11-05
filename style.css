@@ -24,6 +24,8 @@
   --warm: #c92a2a;               /* feels-like above 0 °C */
   --warm-light: #fff5f5;
   --good: #2f9e44;
+  --line-default: #6b9bd1;       /* sparklines (soft blue) */
+  --line-solar: #d4a43c;         /* solar radiation sparkline (soft gold) */
   --series-a: #2563eb;           /* single value / first of a group (accent) */
   --series-b: #0c8599;           /* second of a group (viewer palette teal) */
   --series-c: #e8590c;
@@ -418,6 +420,12 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 }
 .map-here-halo { fill: var(--accent); opacity: 0.3; }
 
+/* --- Sparkline colours --------------------------------------
+   Each tile sets --line for its sparkline, fill and end dot: soft blue,
+   with soft gold for solar radiation. */
+.tile    { --line: var(--line-default); }
+.v-solar { --line: var(--line-solar); }
+
 /* --- Sparkline ----------------------------------------------- */
 .spark-wrap {
   position: relative;
@@ -470,7 +478,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 
 .spark-line {
   fill: none;
-  stroke: var(--series-a);
+  stroke: var(--line, var(--series-a));
   stroke-width: max(2px, 0.14rem);
   stroke-linejoin: round;
   stroke-linecap: round;
@@ -478,7 +486,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 .spark-line.s-b { stroke: var(--series-b); stroke-dasharray: 5 3; }
 .spark-line.s-c { stroke: var(--series-c); stroke-dasharray: 1.5 3; }
 
-.spark-area { fill: var(--accent-light); }
+.spark-area { fill: color-mix(in srgb, var(--line, var(--series-a)) 9%, var(--surface)); }
 
 .spark-dot {
   position: absolute;
@@ -486,7 +494,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   height: 0.57rem;
   margin: -0.285rem 0 0 -0.285rem;
   border-radius: 50%;
-  background: var(--series-a);
+  background: var(--line, var(--series-a));
   box-shadow: 0 0 0 2px var(--surface);
 }
 .spark-dot.s-b { background: var(--series-b); }

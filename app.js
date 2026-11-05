@@ -485,7 +485,7 @@ function singleTile(v, s, t0, t1, newest, code) {
   }
 
   return `
-    <article class="tile${v.wide ? ' wide' : ''}${has ? '' : ' no-value'}" aria-label="${escapeHtml(v.label)}: ${valueStr} ${escapeHtml(v.unit)}${dir != null && has ? ` from ${degToCardinal(dir)}` : ''}${ariaExtra}">
+    <article class="tile v-${v.id}${v.wide ? ' wide' : ''}${has ? '' : ' no-value'}" aria-label="${escapeHtml(v.label)}: ${valueStr} ${escapeHtml(v.unit)}${dir != null && has ? ` from ${degToCardinal(dir)}` : ''}${ariaExtra}">
       <div class="tile-top">
         <div class="tile-main">
           <div class="tile-label">${escapeHtml(v.label)}</div>
