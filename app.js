@@ -597,10 +597,13 @@ function cardHtml(site) {
 
   return `
     <div class="site-head">
-      <div>
-        <h1 class="site-name">${escapeHtml(site.name)}, Antarctica</h1>
-        <div class="site-meta">
-          <span class="site-code">${site.code.toUpperCase()}</span>
+      <div class="site-title">
+        ${CONFIG.logoImage ? `<img class="site-logo" src="${escapeHtml(CONFIG.logoImage)}" alt="MCM LTER" />` : ''}
+        <div>
+          <h1 class="site-name">${escapeHtml(site.name)}, Antarctica</h1>
+          <div class="site-meta">
+            <span class="site-code">${site.code.toUpperCase()}</span>
+          </div>
         </div>
       </div>
       <div class="obs-time">

@@ -31,6 +31,9 @@ const CONFIG = {
   // Set to null to turn the average lines and records off.
   climatologyPath: 'climatology',
 
+  // Logo beside the station name. Set to null to hide it.
+  logoImage: 'img/MCM_bigger_better_trans.png',
+
   // Locator map (tools/build_map.R). Set to null to hide the map tile.
   mapImage: 'img/dry-valleys.png',
   mapSize: [680, 400],        // its pixel size (printed by tools/build_map.R)
