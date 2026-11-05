@@ -282,6 +282,27 @@ function segments(series) {
   return segs;
 }
 
+// Y-axis ticks: round values (1/2/5 × 10^k) inside [lo, hi], using the largest
+// step that still gives at least two. More than four are thinned to every other
+// one so they fit a short chart. Returns { ticks, digits }.
+function yTicks(lo, hi) {
+  const span = hi - lo;
+  if (!(span > 0)) return { ticks: [], digits: 0 };
+  const top = Math.floor(Math.log10(span)) + 1;
+  for (let e = top; e >= top - 4; e--) {
+    for (const m of [5, 2, 1]) {
+      const step = m * Math.pow(10, e);
+      const first = Math.ceil(lo / step - 1e-9) * step;
+      const n = Math.floor((hi - first) / step + 1e-9) + 1;
+      if (n < 2) continue;
+      let ticks = Array.from({ length: n }, (_, i) => first + i * step);
+      if (n > 4) ticks = ticks.filter((_, i) => i % 2 === 0);
+      return { ticks, digits: Math.max(0, -Math.floor(Math.log10(step) + 1e-9)) };
+    }
+  }
+  return { ticks: [], digits: 0 };
+}
+
 // lines: [{ series, cls }] — all share one y-scale (same unit).
 // minSpan: smallest y-range drawn, so sensor noise doesn't look like a trend.
 // refs: [{ series, cls }] drawn behind the data (e.g. the historical average),
@@ -299,7 +320,15 @@ function sparkline(lines, t0, t1, minSpan = 0, refs = []) {
   const y = v => PAD + (1 - (v - lo) / (hi - lo)) * (H - 2 * PAD);
   const pt = p => `${x(p.time).toFixed(1)},${y(p.value).toFixed(1)}`;
 
-  // Layers, bottom to top: data fill, reference (average) lines, data lines.
+  // Y-axis: faint gridlines in the SVG, labels as HTML in a left gutter (so
+  // they don't stretch with the chart).
+  const { ticks, digits } = yTicks(lo, hi);
+  const grid = ticks.map(v =>
+    `<line class="spark-grid" x1="0" x2="${W}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" vector-effect="non-scaling-stroke" />`).join('');
+  const axis = ticks.map(v =>
+    `<span class="spark-tick" style="top:${(y(v) / H * 100).toFixed(2)}%">${fmt(v, digits)}</span>`).join('');
+
+  // Layers, bottom to top: gridlines, data fill, reference (average) lines, data lines.
   let fills = '', refPaths = '', paths = '', dots = '';
   for (const { series, cls } of refs) {
     const segs = segments(series);
@@ -319,8 +348,9 @@ function sparkline(lines, t0, t1, minSpan = 0, refs = []) {
     // End dot is an HTML overlay so it stays round when the SVG stretches.
     dots += `<span class="spark-dot ${cls}" style="left:${(x(lp.time) / W * 100).toFixed(2)}%;top:${(y(lp.value) / H * 100).toFixed(2)}%"></span>`;
   }
-  paths = fills + refPaths + paths;
-  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${paths}</svg>${dots}`;
+  paths = grid + fills + refPaths + paths;
+  return `<div class="spark-axis" aria-hidden="true">${axis}</div>` +
+    `<div class="spark-plot"><svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">${paths}</svg>${dots}</div>`;
 }
 
 function windArrow(fromDeg) {
@@ -405,7 +435,9 @@ function singleTile(v, s, t0, t1, newest, code) {
     if (ms != null) {
       const wc = windChill(s.value, ms * 3.6);
       const feels = wc == null ? s.value : wc;      // calm (or above 10 °C): feels like the air temp
-      sub = `<span class="feels-like">Feels like <strong>${fmt(feels, v.digits)} ${escapeHtml(v.unit)}</strong></span>` +
+      const { veryCold = -Infinity, warm = Infinity } = v.windChill;
+      const band = feels > warm ? ' is-warm' : feels <= veryCold ? ' is-very-cold' : '';
+      sub = `<span class="feels-like${band}">Feels like <strong>${fmt(feels, v.digits)} ${escapeHtml(v.unit)}</strong></span>` +
         (sub ? `<span>· ${sub.replace(/^<span>|<\/span>$/g, '')}</span>` : '');
       ariaExtra = `, feels like ${fmt(feels, v.digits)}`;
     }
@@ -501,18 +533,72 @@ function tileHtml(v, rows, t0, t1, newest, code) {
   return singleTile(v, summarizeField(v.field, v.scale, rows, newest, { badIfAllZero: v.badIfAllZero }), t0, t1, newest, code);
 }
 
+// Locator map: the satellite image with every station as a dot and the current
+// one highlighted. Drawn as one SVG (image + markers share its coordinates), so
+// it scales to whatever space the tile has and the dots stay put.
+const [MAP_W, MAP_H] = CONFIG.mapSize || [480, 480];   // image pixel size → SVG viewBox
+
+function mapTileHtml(site) {
+  if (!CONFIG.mapImage || !site.map) return '';
+  const pos = s => ({ x: s.map[0] / 100 * MAP_W, y: s.map[1] / 100 * MAP_H });
+  const others = SITES.filter(s => s.map && s.code !== site.code).map(s => {
+    const { x, y } = pos(s);
+    const stale = store.get(s.code) && store.get(s.code).checkedAt && !isFresh(s.code);
+    return `<g class="map-dot${stale ? ' stale' : ''}" data-code="${s.code}"><title>${escapeHtml(s.name)} (${s.code.toUpperCase()})</title>
+      <circle class="hit" cx="${x}" cy="${y}" r="20" /><circle cx="${x}" cy="${y}" r="8" vector-effect="non-scaling-stroke" /></g>`;
+  }).join('');
+  const { x, y } = pos(site);
+  return `
+    <article class="tile map-tile" aria-label="Location map: ${escapeHtml(site.name)} in the McMurdo Dry Valleys">
+      <div class="tile-label">Location in McMurdo Dry Valleys</div>
+      <svg class="map-svg" viewBox="0 0 ${MAP_W} ${MAP_H}" preserveAspectRatio="xMidYMid meet" role="img"
+           aria-label="Satellite image of the Dry Valleys with ${escapeHtml(site.name)} marked">
+        <image href="${escapeHtml(CONFIG.mapImage)}" width="${MAP_W}" height="${MAP_H}" />
+        ${others}
+        <circle class="map-here-halo" cx="${x}" cy="${y}" r="28" />
+        <circle class="map-here" cx="${x}" cy="${y}" r="14" vector-effect="non-scaling-stroke" />
+      </svg>
+      <div class="spark-caption"><span>${escapeHtml(CONFIG.mapCredit || '')}</span></div>
+    </article>`;
+}
+
+// Fill the map tile: show the largest part of the image with the tile's own
+// shape, centred on the stations. If that would cut off a station (a tall,
+// narrow tile, e.g. on phones), zoom to just fit the stations instead and let
+// the view run past the image edge (blank margin) on the long side.
+function fitMap() {
+  const svg = document.querySelector('.map-svg');
+  if (!svg) return;
+  const { width: bw, height: bh } = svg.getBoundingClientRect();
+  if (!bw || !bh) return;
+  const a = bw / bh;
+  const xs = SITES.filter(s => s.map).map(s => s.map[0] / 100 * MAP_W);
+  const ys = SITES.filter(s => s.map).map(s => s.map[1] / 100 * MAP_H);
+  const pad = 0.05 * MAP_W;
+  const sx0 = Math.min(...xs) - pad, sx1 = Math.max(...xs) + pad;
+  const sy0 = Math.min(...ys) - pad, sy1 = Math.max(...ys) + pad;
+  let w = Math.min(MAP_W, MAP_H * a), h = w / a;
+  if (w < sx1 - sx0) { w = sx1 - sx0; h = w / a; }
+  if (h < sy1 - sy0) { h = sy1 - sy0; w = h * a; }
+  // Centre on the stations, kept inside the image where it's big enough.
+  const place = (c, len, full) => (len <= full ? Math.min(Math.max(c - len / 2, 0), full - len) : (full - len) / 2);
+  const x = place((sx0 + sx1) / 2, w, MAP_W);
+  const y = place((sy0 + sy1) / 2, h, MAP_H);
+  svg.setAttribute('viewBox', `${x.toFixed(1)} ${y.toFixed(1)} ${w.toFixed(1)} ${h.toFixed(1)}`);
+}
+
 function cardHtml(site) {
   const { rows, latest } = store.get(site.code);
   const t1 = latest.getTime();
   const t0 = t1 - CONFIG.trendHours * HOUR;
   const tiles = VARIABLES[site.type]
     .map(v => tileHtml(v, rows, t0, t1, latest, site.code))
-    .join('');
+    .join('') + mapTileHtml(site);
 
   return `
     <div class="site-head">
       <div>
-        <h1 class="site-name">${escapeHtml(site.name)}</h1>
+        <h1 class="site-name">${escapeHtml(site.name)}, Antarctica</h1>
         <div class="site-meta">
           <span class="site-code">${site.code.toUpperCase()}</span>
         </div>
@@ -569,6 +655,7 @@ async function showSite(site) {
   } else {
     card.innerHTML = html;
   }
+  fitMap();
   card.classList.add('is-shown');
   firstRender = false;
   currentCode = site.code;
@@ -713,11 +800,19 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.self !== window.top) document.body.classList.add('embedded');
   tickAgo();
   setInterval(tickAgo, 30000);
+  window.addEventListener('resize', fitMap);
 
   $('#site-dots').addEventListener('click', e => {
     const btn = e.target.closest('.site-dot');
     if (!btn || btn.disabled || btn.dataset.code === currentCode) return;
     jumpTo(SITES.find(s => s.code === btn.dataset.code));
+  });
+
+  // Station dots on the map jump too (unless that site is known to be stale).
+  $('#site-card').addEventListener('click', e => {
+    const dot = e.target.closest('.map-dot');
+    if (!dot || dot.classList.contains('stale') || inCooldown(dot.dataset.code)) return;
+    jumpTo(SITES.find(s => s.code === dot.dataset.code));
   });
 
   renderDots();

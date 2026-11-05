@@ -30,6 +30,11 @@ const CONFIG = {
   // Pre-computed historical averages / records (tools/build_climatology.py).
   // Set to null to turn the average lines and records off.
   climatologyPath: 'climatology',
+
+  // Locator map (tools/build_map.R). Set to null to hide the map tile.
+  mapImage: 'img/dry-valleys.png',
+  mapSize: [680, 400],        // its pixel size (printed by tools/build_map.R)
+  mapCredit: 'Map: USGS 1:250,000 shaded relief',
 };
 
 const MS_TO_KT = 1.94384;
@@ -44,30 +49,34 @@ const MS_TO_KT = 1.94384;
 // clim    = climatology key for a dashed historical-average line (air_temp, rh, solar)
 // records = climatology key for the record high/low at this date + hour (air_temp)
 // badIfAllZero = treat as no data if every reading in the trend window is exactly 0
-// windChill = { windField }: show "Feels like" from this wind column (m/s, same row)
+// windChill = { windField, veryCold, warm }: show "Feels like" from this wind column
+//             (m/s, same row). The box is solid blue at or below `veryCold`, red
+//             above `warm` (°C), pale blue in between.
 // tendency  = { hours, steady }: Rising/Falling vs. the reading `hours` earlier;
 //             changes smaller than `steady` (in display units) count as Steady
 const VARIABLES = {
   met: [
-    { id: 'air_temp', field: 'air_temp_3m', label: 'Air Temperature', unit: '°C', digits: 1, minSpan: 2, windChill: { windField: 'wind_spd_avg' }, clim: 'air_temp', records: 'air_temp' },
+    { id: 'air_temp', field: 'air_temp_3m', label: 'Air Temperature', unit: '°C', digits: 1, minSpan: 2, windChill: { windField: 'wind_spd_avg', veryCold: -25, warm: 0 }, clim: 'air_temp', records: 'air_temp' },
     { id: 'rh', field: 'rel_hum_3m', label: 'Relative Humidity', unit: '%', digits: 0, minSpan: 10, badIfAllZero: true, clim: 'rh' },
     { id: 'solar', field: 'sw_rad_in', label: 'Solar Radiation', unit: 'W/m²', digits: 0, minSpan: 50, clim: 'solar' },
-    { id: 'wind', wide: true, field: 'wind_spd_avg', label: 'Wind', unit: 'kt', digits: 1, minSpan: 5, scale: MS_TO_KT, dirField: 'wind_direction', gustField: 'wind_spd_max' },
+    { id: 'wind', field: 'wind_spd_avg', label: 'Wind', unit: 'kt', digits: 1, minSpan: 5, scale: MS_TO_KT, dirField: 'wind_direction', gustField: 'wind_spd_max' },
     { id: 'pressure', field: 'barom_pres', label: 'Pressure', unit: 'hPa', digits: 1, minSpan: 2, tendency: { hours: 3, steady: 1 } },
   ],
 };
 
 // ─── Sites, in rotation order ─────────────────────────────────
+// map = [x, y] position on CONFIG.mapImage, in % of its width / height
+//       (printed by tools/build_map.R from the stations' GPS coordinates)
 const SITES = [
-  { code: 'boym', type: 'met', name: 'Lake Bonney' },
-  { code: 'tarm', type: 'met', name: 'Taylor Glacier' },
-  { code: 'ho2m', type: 'met', name: 'Lake Hoare' },
-  { code: 'caam', type: 'met', name: 'Canada Glacier' },
-  { code: 'frlm', type: 'met', name: 'Lake Fryxell' },
-  { code: 'hodm', type: 'met', name: 'Howard Glacier' },
-  { code: 'cohm', type: 'met', name: 'Commonwealth Glacier' },
-  { code: 'exem', type: 'met', name: "Explorer's Cove" },
-  { code: 'brhm', type: 'met', name: 'Lake Brownworth' },
-  { code: 'vaam', type: 'met', name: 'Lake Vanda' },
-  { code: 'viam', type: 'met', name: 'Lake Vida' },
+  { code: 'boym', type: 'met', name: 'Lake Bonney', map: [38.6, 71.2] },
+  { code: 'tarm', type: 'met', name: 'Taylor Glacier', map: [32.8, 75.1] },
+  { code: 'ho2m', type: 'met', name: 'Lake Hoare', map: [46.0, 58.1] },
+  { code: 'caam', type: 'met', name: 'Canada Glacier', map: [47.1, 56.5] },
+  { code: 'frlm', type: 'met', name: 'Lake Fryxell', map: [50.8, 56.1] },
+  { code: 'hodm', type: 'met', name: 'Howard Glacier', map: [49.3, 64.6] },
+  { code: 'cohm', type: 'met', name: 'Commonwealth Glacier', map: [52.7, 49.5] },
+  { code: 'exem', type: 'met', name: "Explorer's Cove", map: [55.1, 52.8] },
+  { code: 'brhm', type: 'met', name: 'Lake Brownworth', map: [42.1, 31.7] },
+  { code: 'vaam', type: 'met', name: 'Lake Vanda', map: [24.3, 45.8] },
+  { code: 'viam', type: 'met', name: 'Lake Vida', map: [25.7, 24.9] },
 ];

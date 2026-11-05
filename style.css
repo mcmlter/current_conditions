@@ -21,6 +21,8 @@
   --text-muted: #8a877f;
   --accent: #2563eb;
   --accent-light: #eff6ff;
+  --warm: #c92a2a;               /* feels-like above 0 °C */
+  --warm-light: #fff5f5;
   --good: #2f9e44;
   --series-a: #2563eb;           /* single value / first of a group (accent) */
   --series-b: #0c8599;           /* second of a group (viewer palette teal) */
@@ -32,6 +34,7 @@
   --mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 
   --gap: 0.86rem;
+  --axis-w: 2.5rem;              /* sparkline y-axis label gutter */
   --transition-ms: 550ms;
 }
 
@@ -124,6 +127,17 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   white-space: nowrap;
 }
 .feels-like strong { font-weight: 600; color: inherit; }
+/* Feels-like bands (thresholds in config.js): solid blue when very cold, red above 0 °C. */
+.feels-like.is-very-cold {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.feels-like.is-warm {
+  background: var(--warm-light);
+  border-color: color-mix(in srgb, var(--warm) 30%, transparent);
+  color: var(--warm);
+}
 
 /* Pressure tendency reuses the wind-direction block, a size smaller
    (it sits in a single-width tile). */
@@ -162,6 +176,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 .site-card.is-shown .tile:nth-child(3) { animation-delay: 120ms; }
 .site-card.is-shown .tile:nth-child(4) { animation-delay: 180ms; }
 .site-card.is-shown .tile:nth-child(5) { animation-delay: 240ms; }
+.site-card.is-shown .tile:nth-child(6) { animation-delay: 300ms; }
 
 @keyframes tile-in {
   from { opacity: 0; transform: translateY(0.7rem); }
@@ -227,8 +242,8 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 }
 
 /* --- Tiles --------------------------------------------------- */
-/* Default (tablet → TV): 3 columns, so 5 tiles sit 3 on top and
-   2 below, with the `wide` tile (wind / O₂) spanning two columns. */
+/* Default (tablet → TV): 3 columns, 3 tiles on top and wind, pressure and
+   the location map below. (A `wide` tile would span two columns.) */
 .tiles {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -375,6 +390,34 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 .swatch.s-b { border-top-style: dashed; border-top-color: var(--series-b); }
 .swatch.s-c { border-top-style: dotted; border-top-color: var(--series-c); }
 
+/* --- Locator map tile --------------------------------------- */
+/* The SVG takes the height the row gives it (set by the other tiles), and
+   the image fits inside it, so the map never makes its row taller. */
+.map-svg {
+  flex: 1 1 0;
+  min-height: 9rem;
+  width: 100%;
+  margin-top: 0.43rem;
+  display: block;
+}
+
+.map-dot circle:not(.hit) {
+  fill: #fff;
+  stroke: rgba(26, 25, 23, 0.7);
+  stroke-width: 1.5px;
+}
+.map-dot .hit { fill: transparent; }
+.map-dot:not(.stale) { cursor: pointer; }
+.map-dot:not(.stale):hover circle:not(.hit) { fill: var(--accent-light); stroke: var(--accent); }
+.map-dot.stale circle:not(.hit) { fill: rgba(255, 255, 255, 0.45); stroke-dasharray: 2 2; }
+
+.map-here {
+  fill: var(--accent);
+  stroke: #fff;
+  stroke-width: 2.5px;
+}
+.map-here-halo { fill: var(--accent); opacity: 0.3; }
+
 /* --- Sparkline ----------------------------------------------- */
 .spark-wrap {
   position: relative;
@@ -382,6 +425,39 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   min-height: 2.6rem;
   max-height: 8rem;             /* when embedded (sized to content) */
   margin-top: 0.43rem;
+}
+
+/* Y-axis: tick labels in a left gutter, plot area to the right of it. */
+.spark-axis {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--axis-w) - 0.35rem);
+}
+
+.spark-tick {
+  position: absolute;
+  right: 0;
+  transform: translateY(-50%);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  line-height: 1;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.spark-plot {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  left: var(--axis-w);
+}
+
+.spark-grid {
+  stroke: var(--border-light);
+  stroke-width: 1px;
 }
 
 .spark {
@@ -602,6 +678,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   .site-head { margin-bottom: 0.8rem; padding-bottom: 0.6rem; }
   .site-name { font-size: 1.6rem; }
   .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; }
+  .map-tile { display: none; }       /* no room in the one-row layout */
   .tile { padding: 0.6rem 0.7rem 0.5rem; }
   .tile.wide { grid-column: auto; }
   .tile.wide .pair { flex-direction: column; gap: 0.5rem; }
