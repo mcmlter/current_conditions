@@ -31,6 +31,13 @@ const CONFIG = {
   // Set to null to turn the average lines and records off.
   climatologyPath: 'climatology',
 
+  // Wind-direction arrows along the wind trend line (one per time block,
+  // averaged, pointing the way the wind blows). Blocks are sized so arrows sit
+  // about `spacingRem` apart (scales with the display, like the arrows
+  // themselves); screens narrower than `minScreenPx` get none.
+  // Set to null to turn them off.
+  windArrows: { spacingRem: 2.2, minScreenPx: 701 },
+
   // Logo beside the station name. Set to null to hide it.
   logoImage: 'img/MCM_bigger_better_trans.png',
 
@@ -63,7 +70,7 @@ const VARIABLES = {
     { id: 'air_temp', field: 'air_temp_3m', label: 'Air Temperature', unit: '°C', digits: 1, minSpan: 2, windChill: { windField: 'wind_spd_avg', veryCold: -25, warm: 0 }, clim: 'air_temp', records: 'air_temp' },
     { id: 'rh', field: 'rel_hum_3m', label: 'Relative Humidity', unit: '%', digits: 0, minSpan: 10, badIfAllZero: true, clim: 'rh' },
     { id: 'solar', field: 'sw_rad_in', label: 'Solar Radiation', unit: 'W/m²', digits: 0, minSpan: 50, clim: 'solar' },
-    { id: 'wind', field: 'wind_spd_avg', label: 'Wind', unit: 'kt', digits: 1, minSpan: 5, scale: MS_TO_KT, dirField: 'wind_direction', gustField: 'wind_spd_max' },
+    { id: 'wind', field: 'wind_spd_avg', label: 'Wind', unit: 'kt', digits: 1, minSpan: 5, scale: MS_TO_KT, dirField: 'wind_direction', gustField: 'wind_spd_max', dirArrows: true },
     { id: 'pressure', field: 'barom_pres', label: 'Pressure', unit: 'hPa', digits: 1, minSpan: 2, tendency: { hours: 3, steady: 1 } },
   ],
 };

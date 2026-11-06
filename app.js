@@ -465,6 +465,12 @@ function singleTile(v, s, t0, t1, newest, code) {
     ? `<span class="avg-key"><span class="swatch s-avg" aria-hidden="true"></span>${years ? `${years[0]}–${years[1]} avg` : 'Historical avg'}</span>`
     : '';
 
+  // Wind-direction arrows: drawn after layout by drawWindArrows(); the tile
+  // just carries what that needs, plus an empty caption key for it to fill.
+  const arrowAttrs = v.dirArrows && v.dirField && has && CONFIG.windArrows
+    ? ` data-wind-arrows="${code}" data-dir-field="${v.dirField}" data-t0="${t0}" data-t1="${t1}"` : '';
+  const arrowKey = arrowAttrs ? '<span class="avg-key wind-key"></span>' : '';
+
   // Record high / low for this calendar date and hour.
   let recordHtml = '';
   if (v.records && has) {
@@ -485,7 +491,7 @@ function singleTile(v, s, t0, t1, newest, code) {
   }
 
   return `
-    <article class="tile v-${v.id}${v.wide ? ' wide' : ''}${has ? '' : ' no-value'}" aria-label="${escapeHtml(v.label)}: ${valueStr} ${escapeHtml(v.unit)}${dir != null && has ? ` from ${degToCardinal(dir)}` : ''}${ariaExtra}">
+    <article class="tile v-${v.id}${v.wide ? ' wide' : ''}${has ? '' : ' no-value'}"${arrowAttrs} aria-label="${escapeHtml(v.label)}: ${valueStr} ${escapeHtml(v.unit)}${dir != null && has ? ` from ${degToCardinal(dir)}` : ''}${ariaExtra}">
       <div class="tile-top">
         <div class="tile-main">
           <div class="tile-label">${escapeHtml(v.label)}</div>
@@ -497,7 +503,7 @@ function singleTile(v, s, t0, t1, newest, code) {
         </div>${recordHtml}
       </div>
       <div class="spark-wrap">${sparkline([{ series: s.series, cls: 's-a' }], t0, t1, v.minSpan, avg ? [{ series: avg, cls: 's-avg' }] : [])}</div>
-      <div class="spark-caption"><span>${rangeHtml(s, v.digits)}</span>${avgKey}</div>
+      <div class="spark-caption"><span>${rangeHtml(s, v.digits)}</span>${avgKey}${arrowKey}</div>
     </article>`;
 }
 
@@ -562,6 +568,70 @@ function mapTileHtml(site) {
     </article>`;
 }
 
+// ─── Wind-direction arrows on the wind trend line ──────────────
+// Drawn after layout because how many fit depends on the chart's width. Each
+// arrow is the circular mean of the directions in one time block (blocks end
+// at the latest reading), placed on the line at the block's midpoint and
+// pointing the way the wind blows, as in the live data viewer. None on phones.
+const ARROW_BLOCK_HOURS = [0.5, 1, 2, 3, 4, 6, 8, 12];
+
+function circularMeanDeg(dirs) {
+  let sx = 0, sy = 0;
+  for (const d of dirs) { const r = d * Math.PI / 180; sx += Math.sin(r); sy += Math.cos(r); }
+  return dirs.length ? (Math.atan2(sx, sy) * 180 / Math.PI + 360) % 360 : null;
+}
+
+// y (sparkline viewBox units) of a drawn line at viewBox x; null in a gap.
+function lineYAt(path, vx) {
+  for (const seg of path.getAttribute('d').split('M').filter(Boolean)) {
+    const pts = seg.split('L').map(p => p.split(',').map(Number));
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+      if (vx >= x0 && vx <= x1) return x1 === x0 ? y0 : y0 + (y1 - y0) * (vx - x0) / (x1 - x0);
+    }
+  }
+  return null;
+}
+
+function drawWindArrows() {
+  const cfg = CONFIG.windArrows;
+  document.querySelectorAll('.tile[data-wind-arrows]').forEach(tile => {
+    tile.querySelector('.wind-arrows')?.remove();
+    const key = tile.querySelector('.wind-key');
+    if (key) key.textContent = '';
+    if (!cfg || innerWidth < cfg.minScreenPx) return;
+
+    const plot = tile.querySelector('.spark-plot');
+    const path = tile.querySelector('.spark-line');
+    const info = store.get(tile.dataset.windArrows);
+    if (!plot || !path || !info) return;
+    const field = tile.dataset.dirField, t0 = +tile.dataset.t0, t1 = +tile.dataset.t1;
+    const width = plot.getBoundingClientRect().width;
+    if (!width) return;
+
+    const hours = CONFIG.trendHours;
+    const spacingPx = cfg.spacingRem * parseFloat(getComputedStyle(document.documentElement).fontSize);
+    const want = hours * spacingPx / width;
+    const block = ARROW_BLOCK_HOURS.find(h => h >= want) || ARROW_BLOCK_HOURS[ARROW_BLOCK_HOURS.length - 1];
+    const n = Math.floor(hours / block);
+    let html = '';
+    for (let i = 0; i < n; i++) {
+      const a = t1 - (n - i) * block * HOUR, b = a + block * HOUR;
+      const from = circularMeanDeg(info.rows
+        .filter(r => r.time > a && r.time <= b && r[field] != null).map(r => r[field]));
+      if (from == null) continue;
+      const frac = ((a + b) / 2 - t0) / (t1 - t0);
+      const vy = lineYAt(path, frac * 200);         // sparkline viewBox is 200 × 40
+      if (vy == null) continue;
+      html += `<span class="wind-arrow-mini" style="left:${(frac * 100).toFixed(2)}%;top:${(vy / 40 * 100).toFixed(2)}%"
+        title="From ${degToCardinal(from)} (${Math.round(from)}°)">${windArrow(from)}</span>`;
+    }
+    if (!html) return;
+    plot.insertAdjacentHTML('beforeend', `<div class="wind-arrows" aria-hidden="true">${html}</div>`);
+    if (key) key.textContent = `↗ direction blowing to, avg per ${block < 1 ? `${block * 60} min` : `${block} h`}`;
+  });
+}
+
 // Fill the map tile: show the largest part of the image with the tile's own
 // shape, centred on the stations. If that would cut off a station (a tall,
 // narrow tile, e.g. on phones), zoom to just fit the stations instead and let
@@ -600,7 +670,7 @@ function cardHtml(site) {
       <div class="site-title">
         ${CONFIG.logoImage ? `<img class="site-logo" src="${escapeHtml(CONFIG.logoImage)}" alt="MCM LTER" />` : ''}
         <div>
-          <h1 class="site-name">${escapeHtml(site.name)}, Antarctica</h1>
+          <h1 class="site-name">${escapeHtml(site.name)}<span class="site-region">, Antarctica</span></h1>
           <div class="site-meta">
             <span class="site-code">${site.code.toUpperCase()}</span>
           </div>
@@ -659,6 +729,7 @@ async function showSite(site) {
     card.innerHTML = html;
   }
   fitMap();
+  drawWindArrows();
   card.classList.add('is-shown');
   firstRender = false;
   currentCode = site.code;
@@ -803,7 +874,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (window.self !== window.top) document.body.classList.add('embedded');
   tickAgo();
   setInterval(tickAgo, 30000);
-  window.addEventListener('resize', fitMap);
+  window.addEventListener('resize', () => { fitMap(); drawWindArrows(); });
 
   $('#site-dots').addEventListener('click', e => {
     const btn = e.target.closest('.site-dot');

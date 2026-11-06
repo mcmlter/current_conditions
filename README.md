@@ -25,7 +25,7 @@ observation.
 | Air temperature | °C | At 3 m height, with a "feels like" wind chill and the record high/low |
 | Relative humidity | % | At 3 m height |
 | Solar radiation | W/m² | Incoming shortwave |
-| Wind | kt | Average speed, direction, and peak gust |
+| Wind | kt | Average speed, direction (also along the trend line), and peak gust |
 | Barometric pressure | hPa | With a rising / steady / falling trend |
 | Location | | Map of the Dry Valleys with every station marked |
 
@@ -36,6 +36,9 @@ for the same dates and times of day as a dashed grey line behind the trend.
 
 - **Wind direction** is the compass point the wind blows *from*, e.g. "WNW, from 282°".
   The arrow points the way the wind is blowing, matching the MCM live data viewer.
+  On larger screens, small arrows along the 24-hour wind line show how the direction
+  changed: each is the average direction over a block of hours (given under the
+  chart), pointing the way the wind was blowing. They're left off on phones.
 - **Feels like** is the wind chill, from the air temperature and average wind speed
   (Environment Canada / US National Weather Service formula). It only applies at
   or below 10 °C with wind above 4.8 km/h; otherwise it equals the air temperature.

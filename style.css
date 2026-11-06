@@ -406,6 +406,21 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 .swatch.s-b { border-top-style: dashed; border-top-color: var(--series-b); }
 .swatch.s-c { border-top-style: dotted; border-top-color: var(--series-c); }
 
+/* --- Wind-direction arrows on the wind trend line ----------- */
+.wind-arrows { position: absolute; inset: 0; pointer-events: none; }
+.wind-arrow-mini {
+  position: absolute;
+  width: 0.95rem;
+  height: 0.95rem;
+  margin: -0.475rem 0 0 -0.475rem;
+  color: #000;
+  pointer-events: auto;          /* hover shows the direction */
+}
+.wind-arrows .wind-arrow-mini .wind-arrow { display: block; width: 100%; height: 100%; color: inherit; }
+@media (max-width: 700px) {
+  .wind-arrows, .wind-key { display: none; }
+}
+
 /* --- Locator map tile --------------------------------------- */
 /* The SVG takes the height the row gives it (set by the other tiles), and
    the image fits inside it, so the map never makes its row taller. */
@@ -678,7 +693,8 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   #app { padding: 0.7rem 0.85rem 1.4rem; }
   .site-card { padding: 1.1rem; min-height: 0; }
   .site-name { font-size: 1.9rem; }
-  .site-logo { height: 3.6rem; }
+  .site-region { display: none; }    /* just the station name on phones */
+  .site-logo { display: none; }      /* logo is the home-screen / tab icon there instead */
   .site-title { gap: 0.75rem; }
   .obs-time { text-align: left; }
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
@@ -705,7 +721,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   .site-card { min-height: 0; padding: 0.9rem 1rem; }
   .site-head { margin-bottom: 0.8rem; padding-bottom: 0.6rem; }
   .site-name { font-size: 1.6rem; }
-  .site-logo { height: 3rem; }
+  .site-logo, .site-region { display: none; }   /* phone held sideways: same as upright */
   .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
   .tile { padding: 0.6rem 0.7rem 0.5rem; }
   .tile.wide { grid-column: auto; }
