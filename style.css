@@ -684,7 +684,9 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
   .tile { padding: 0.8rem 0.85rem 0.6rem; }
   .tile-number { font-size: 2.2rem; }
-  .side-stat { flex-basis: 100%; margin: 0.3rem 0 0; padding-left: 0; border-left: 0; }
+  /* Wind direction / pressure trend drop onto their own line under the value */
+  .wind-dir { flex-basis: 100%; margin: 0.3rem 0 0; padding-left: 0; border-left: 0; }
+  .tile-records { justify-content: start; text-align: left; }
   .tile.wide { grid-column: 1 / -1; }
   .tile-label { min-height: 0; }
 }
@@ -695,7 +697,8 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   .tile.wide .pair { flex-direction: column; }
 }
 
-/* Short landscape screens (phone held sideways): one compact row. */
+/* Short landscape screens (phone held sideways): compact 3 × 2 grid, so the
+   map still fits and nothing is squeezed into a fifth of the width. */
 @media (max-height: 500px) and (orientation: landscape) {
   body:not(.embedded) #app { min-height: 0; }
   #app { padding: 0.6rem 0.85rem 1rem; }
@@ -703,15 +706,14 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   .site-head { margin-bottom: 0.8rem; padding-bottom: 0.6rem; }
   .site-name { font-size: 1.6rem; }
   .site-logo { height: 3rem; }
-  .tiles { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.5rem; }
-  .map-tile { display: none; }       /* no room in the one-row layout */
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem; }
   .tile { padding: 0.6rem 0.7rem 0.5rem; }
   .tile.wide { grid-column: auto; }
   .tile.wide .pair { flex-direction: column; gap: 0.5rem; }
   .tile-number { font-size: 1.7rem; }
   .pair-row .tile-number { font-size: 1.3rem; }
-  .wind-dir { margin-left: 0.5rem; padding-left: 0.5rem; }
   .wind-cardinal { font-size: 1.2rem; }
   .wind-arrow { width: 1.6rem; height: 1.6rem; }
+  .side-stat { flex-basis: 100%; margin: 0.3rem 0 0; padding-left: 0; border-left: 0; }
   .tile-label { font-size: 0.7rem; }
 }

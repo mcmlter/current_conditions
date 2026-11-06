@@ -27,16 +27,17 @@ const CONFIG = {
   // this is used only if a timestamp arrives without an offset.
   loggerUtcOffset: '+13:00',
 
-  // Pre-computed historical averages / records (tools/build_climatology.py).
+  // Pre-computed historical averages / records (maintenance/build_climatology.py).
   // Set to null to turn the average lines and records off.
   climatologyPath: 'climatology',
 
   // Logo beside the station name. Set to null to hide it.
   logoImage: 'img/MCM_bigger_better_trans.png',
 
-  // Locator map (tools/build_map.R). Set to null to hide the map tile.
+  // Locator map (USGS 1:250,000 shaded relief, cropped to the stations).
+  // Set to null to hide the map tile.
   mapImage: 'img/dry-valleys.png',
-  mapSize: [680, 400],        // its pixel size (printed by tools/build_map.R)
+  mapSize: [680, 400],        // the image's pixel size
   mapCredit: 'Map: USGS 1:250,000 shaded relief',
 };
 
@@ -69,7 +70,7 @@ const VARIABLES = {
 
 // ─── Sites, in rotation order ─────────────────────────────────
 // map = [x, y] position on CONFIG.mapImage, in % of its width / height
-//       (printed by tools/build_map.R from the stations' GPS coordinates)
+//       (from the stations' GPS coordinates, georeferenced to the map's graticule)
 const SITES = [
   { code: 'boym', type: 'met', name: 'Lake Bonney', map: [38.6, 71.2] },
   { code: 'tarm', type: 'met', name: 'Taylor Glacier', map: [32.8, 75.1] },

@@ -2,9 +2,9 @@
 # shaded-relief map of Ross Island & the Dry Valleys, and print each station's
 # position on it (as % of the image width/height) for SITES in config.js.
 #
-#   Rscript tools/build_map.R
+#   Rscript maintenance/build_map.R
 #
-# Needs magick. Input: location/RossIsland_DryValleys_250kDRG_HighRes.gif
+# Needs magick. Input: maintenance/RossIsland_DryValleys_250kDRG_HighRes.gif
 # (3400 x 2199 px, not georeferenced).
 #
 # Georeferencing: the map is a conic projection, so meridians are straight lines
@@ -14,7 +14,7 @@
 
 suppressPackageStartupMessages(library(magick))
 
-src    <- "location/RossIsland_DryValleys_250kDRG_HighRes.gif"
+src    <- "maintenance/RossIsland_DryValleys_250kDRG_HighRes.gif"
 out    <- "img/dry-valleys.png"
 margin <- 280       # px of context (in the source, ~70 m/px, so ~20 km) around the outermost stations
 aspect <- 1.7       # widen the crop to this width:height (about the map tile's shape on

@@ -1,5 +1,5 @@
 {
-  "_help": "EDI package per station, from https://mcm.lternet.edu/meteorology-datasets/ (the script uses each package's newest revision). Optional keys per station: entity, station, columns, time_format; see the top of build_climatology.py. Run: python tools/build_climatology.py",
+  "_help": "EDI package per station, from https://mcm.lternet.edu/meteorology-datasets/ (the script uses each package's newest revision). Optional keys per station: entity, station, columns, time_format; see the top of maintenance/build_climatology.py. Run: python maintenance/build_climatology.py",
   "boym": { "edi": "knb-lter-mcm.7003", "_name": "Lake Bonney (BOYM)", "entity": "high-frequency" },
   "tarm": { "edi": "knb-lter-mcm.7013", "_name": "Taylor Glacier (TARM)", "entity": "high-frequency" },
   "ho2m": { "edi": "knb-lter-mcm.7011", "station": "HOEM", "_name": "Lake Hoare: EDI package is HOEM; live feed is HO2M", "entity": "high-frequency" },

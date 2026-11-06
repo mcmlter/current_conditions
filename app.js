@@ -165,7 +165,7 @@ async function fetchSite(site) {
   }
 }
 
-// ─── Historical climatology (pre-computed, see tools/build_climatology.py) ───
+// ─── Historical climatology (pre-computed, see maintenance/build_climatology.py) ───
 // climatology/<code>/<MM>.json: per day-of-month × hour (UTC+13 clock) long-term
 // means and record highs/lows. Missing files just mean no average line.
 const climCache = new Map();          // "code/MM" → Promise<doc | null>
@@ -533,7 +533,7 @@ function tileHtml(v, rows, t0, t1, newest, code) {
   return singleTile(v, summarizeField(v.field, v.scale, rows, newest, { badIfAllZero: v.badIfAllZero }), t0, t1, newest, code);
 }
 
-// Locator map: the satellite image with every station as a dot and the current
+// Locator map: the shaded-relief map with every station as a dot and the current
 // one highlighted. Drawn as one SVG (image + markers share its coordinates), so
 // it scales to whatever space the tile has and the dots stay put.
 const [MAP_W, MAP_H] = CONFIG.mapSize || [480, 480];   // image pixel size → SVG viewBox
@@ -552,7 +552,7 @@ function mapTileHtml(site) {
     <article class="tile map-tile" aria-label="Location map: ${escapeHtml(site.name)} in the McMurdo Dry Valleys">
       <div class="tile-label">Location in McMurdo Dry Valleys</div>
       <svg class="map-svg" viewBox="0 0 ${MAP_W} ${MAP_H}" preserveAspectRatio="xMidYMid meet" role="img"
-           aria-label="Satellite image of the Dry Valleys with ${escapeHtml(site.name)} marked">
+           aria-label="Shaded-relief map of the Dry Valleys with ${escapeHtml(site.name)} marked">
         <image href="${escapeHtml(CONFIG.mapImage)}" width="${MAP_W}" height="${MAP_H}" />
         ${others}
         <circle class="map-here-halo" cx="${x}" cy="${y}" r="28" />

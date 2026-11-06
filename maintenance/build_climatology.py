@@ -19,7 +19,8 @@ Each file holds, for every day of that month and every hour of the day
 
 Input is the quality-controlled MCM LTER met data from EDI. Either point the
 script at EDI package IDs (it downloads the newest revision) or at CSV files
-you've already downloaded. Configure stations in climatology_sources.json:
+you've already downloaded. Configure stations in climatology_sources.json
+(in the repository root):
 
     {
       "boym": { "edi": "knb-lter-mcm.XXXX" },
@@ -36,15 +37,15 @@ Optional per-station keys:
     "time_format": strptime format for the time column, if pandas can't guess
 
 EDI access key: if EDI requires one, create it in EDI's IAM (avatar menu →
-Access Keys) and either export it or save it to tools/.edi_key (git-ignored):
+Access Keys) and either export it or save it to maintenance/.edi_key (git-ignored):
 
-    export EDI_API_KEY=...            # or: echo '...' > tools/.edi_key
+    export EDI_API_KEY=...            # or: echo '...' > maintenance/.edi_key
 
 Usage (needs Python 3.9+ and pandas):
 
-    python tools/build_climatology.py                 # all stations in the config
-    python tools/build_climatology.py boym tarm       # just these
-    python tools/build_climatology.py --check         # list columns found, write nothing
+    python maintenance/build_climatology.py                 # all stations in the config
+    python maintenance/build_climatology.py boym tarm       # just these
+    python maintenance/build_climatology.py --check         # list columns found, write nothing
 
 Timestamps are assumed to be on the UTC+13 logger clock, the same as the live
 data. Pass --utc-offset if a source uses something else (e.g. --utc-offset 0
@@ -104,7 +105,7 @@ def log(msg):
 
 # ─── Getting the data ─────────────────────────────────────────────────────
 # EDI access key (https://edirepository.org/user-guides/iam#working-with-api-access-keys).
-# Read from the EDI_API_KEY environment variable, or from tools/.edi_key
+# Read from the EDI_API_KEY environment variable, or from maintenance/.edi_key
 # (git-ignored). It's appended to each PASTA request as ?key=…, which EDI's
 # gatekeeper swaps for a short-lived token. With no key, requests go anonymously.
 KEY_FILE = HERE / ".edi_key"
@@ -133,7 +134,7 @@ def http_get(url):
         # Report the URL without the key.
         hint = ""
         if e.code in (401, 403):
-            hint = (" (access denied: set EDI_API_KEY or put your key in tools/.edi_key)"
+            hint = (" (access denied: set EDI_API_KEY or put your key in maintenance/.edi_key)"
                     if not edi_key() else " (access denied: check the key is valid and not expired)")
         raise SystemExit(f"EDI request failed: HTTP {e.code} for {url}{hint}") from None
 
@@ -403,7 +404,7 @@ def write_station(code, mean, rec, y0, y1, out_dir, source):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("stations", nargs="*", help="station codes (default: all in the config)")
-    ap.add_argument("--config", default=HERE / "climatology_sources.json", type=Path)
+    ap.add_argument("--config", default=ROOT / "climatology_sources.json", type=Path)
     ap.add_argument("--out", default=ROOT / "climatology", type=Path)
     ap.add_argument("--utc-offset", type=float, default=LOGGER_OFFSET_H,
                     help="UTC offset (hours) of the source timestamps; default 13")
