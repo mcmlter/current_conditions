@@ -2,3 +2,6 @@ maintenance/.edi_key
 __pycache__/
 .Rproj.user
 .DS_Store
+# Source imagery (~1.5 GB); see maintenance/README.md
+maintenance/*.tif
+maintenance/*.tiff

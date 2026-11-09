@@ -432,15 +432,16 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   display: block;
 }
 
+/* Dark dots with a white ring show on both snow and bare ground */
 .map-dot circle:not(.hit) {
-  fill: #fff;
-  stroke: rgba(26, 25, 23, 0.7);
+  fill: rgba(26, 25, 23, 0.85);
+  stroke: #fff;
   stroke-width: 1.5px;
 }
 .map-dot .hit { fill: transparent; }
 .map-dot:not(.stale) { cursor: pointer; }
 .map-dot:not(.stale):hover circle:not(.hit) { fill: var(--accent-light); stroke: var(--accent); }
-.map-dot.stale circle:not(.hit) { fill: rgba(255, 255, 255, 0.45); stroke-dasharray: 2 2; }
+.map-dot.stale circle:not(.hit) { fill: rgba(26, 25, 23, 0.35); stroke-dasharray: 2 2; }
 
 .map-here {
   fill: var(--accent);

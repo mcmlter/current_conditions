@@ -53,7 +53,7 @@ for the same dates and times of day as a dashed grey line behind the trend.
   that calendar date during that hour of the latest observation, with the year.
 - **Pressure trend** compares the latest reading with the one 3 hours earlier:
   *Rising* or *Falling* for a change of 1 hPa or more, otherwise *Steady*.
-- **Location map** is the USGS 1:250,000 shaded-relief map of the Dry Valleys with
+- **Location map** is a Sentinel-2 satellite image of the Dry Valleys with
   every station marked and the one on screen in blue. Click another station's dot
   to jump to it; stations not currently reporting are shown faded.
 - **Times** are shown in UTC +13 (McMurdo Time), the time the field loggers keep year-round (the

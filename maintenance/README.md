@@ -2,14 +2,14 @@
 
 Developer notes for the Current Conditions dashboard. Nothing in this folder is
 loaded by the page; it's the source material and scripts for the pre-built files
-the page uses (`img/dry-valleys.png`, the station map positions in `config.js`,
+the page uses (`img/dry-valleys.jpg`, the station map positions in `config.js`,
 and `climatology/`).
 
 | Path | What it's for |
 |---|---|
 | `maintenance/README.md` | This file |
-| `maintenance/build_map.R` | Builds `img/dry-valleys.png` and the station map positions |
-| `maintenance/RossIsland_DryValleys_250kDRG_HighRes.gif` | Source map for `build_map.R` (USGS, 3.7 MB) |
+| `maintenance/build_map.py` | Builds `img/dry-valleys.jpg` and the station map positions |
+| `maintenance/MDV_region_highres.tif` | Source imagery for `build_map.py` (10 m GeoTIFF, ~1.5 GB; not in git, see below) |
 | `maintenance/build_climatology.py` | Builds the historical averages and records in `climatology/` |
 | `climatology_sources.json` (repository root) | EDI package for each station, read by `build_climatology.py` |
 
@@ -48,14 +48,19 @@ settings (`entity`, `station`, `columns`, `time_format`).
 
 ## Updating the location map
 
-`img/dry-valleys.png` and the station positions (`map: [x, y]` in `SITES`, and
-`mapSize` in config.js) come from `maintenance/build_map.R`. It crops the USGS Ross
-Island & Dry Valleys 1:250,000 map in this folder to the stations, shrinks it to a
-680 px wide, 128-colour PNG (~160 KB) and prints each station's position. The scanned
-map isn't georeferenced, so the script fits its projection from the lat/long tick
-marks on the map frame (accurate to well under a pixel). Needs R with magick:
+`img/dry-valleys.jpg` and the station positions (`map: [x, y]` in `SITES`, and
+`mapSize` in config.js) come from `maintenance/build_map.py`. It crops a 10 m per
+pixel true-colour Sentinel-2 satellite GeoTIFF of the Dry Valleys (`MDV_region_highres.tif`,
+WGS 84 / UTM zone 58S) to the stations plus 20 km, saves it 1360 × 800 px (~230 KB)
+and prints each station's position. Needs `pip install numpy pillow tifffile pyproj`:
 
-    Rscript maintenance/build_map.R
+    python maintenance/build_map.py
+    python maintenance/build_map.py --tif /elsewhere/MDV_region_highres.tif
 
 Then paste the printed positions and size into config.js. To add a station, add its
-lat/long to the table at the top of the script and re-run.
+lat/long to the list at the top of the script and re-run.
+
+The GeoTIFF is ~1.5 GB, so `.gitignore` keeps `maintenance/*.tif` out of git. A copy
+lives in the MCM Conditions Display's `maintenance/` folder; keep one somewhere safe.
+(The image stops at about 167° E, so the stations sit a little right of centre.)
+

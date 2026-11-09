@@ -539,10 +539,11 @@ function tileHtml(v, rows, t0, t1, newest, code) {
   return singleTile(v, summarizeField(v.field, v.scale, rows, newest, { badIfAllZero: v.badIfAllZero }), t0, t1, newest, code);
 }
 
-// Locator map: the shaded-relief map with every station as a dot and the current
+// Locator map: the satellite image with every station as a dot and the current
 // one highlighted. Drawn as one SVG (image + markers share its coordinates), so
 // it scales to whatever space the tile has and the dots stay put.
 const [MAP_W, MAP_H] = CONFIG.mapSize || [480, 480];   // image pixel size → SVG viewBox
+const MAP_K = MAP_W / 680;                                // marker sizes below are for a 680 px wide map
 
 function mapTileHtml(site) {
   if (!CONFIG.mapImage || !site.map) return '';
@@ -551,18 +552,18 @@ function mapTileHtml(site) {
     const { x, y } = pos(s);
     const stale = store.get(s.code) && store.get(s.code).checkedAt && !isFresh(s.code);
     return `<g class="map-dot${stale ? ' stale' : ''}" data-code="${s.code}"><title>${escapeHtml(s.name)} (${s.code.toUpperCase()})</title>
-      <circle class="hit" cx="${x}" cy="${y}" r="20" /><circle cx="${x}" cy="${y}" r="8" vector-effect="non-scaling-stroke" /></g>`;
+      <circle class="hit" cx="${x}" cy="${y}" r="${20 * MAP_K}" /><circle cx="${x}" cy="${y}" r="${8 * MAP_K}" vector-effect="non-scaling-stroke" /></g>`;
   }).join('');
   const { x, y } = pos(site);
   return `
     <article class="tile map-tile" aria-label="Location map: ${escapeHtml(site.name)} in the McMurdo Dry Valleys">
       <div class="tile-label">Location in McMurdo Dry Valleys</div>
       <svg class="map-svg" viewBox="0 0 ${MAP_W} ${MAP_H}" preserveAspectRatio="xMidYMid meet" role="img"
-           aria-label="Shaded-relief map of the Dry Valleys with ${escapeHtml(site.name)} marked">
+           aria-label="Satellite image of the Dry Valleys with ${escapeHtml(site.name)} marked">
         <image href="${escapeHtml(CONFIG.mapImage)}" width="${MAP_W}" height="${MAP_H}" />
         ${others}
-        <circle class="map-here-halo" cx="${x}" cy="${y}" r="28" />
-        <circle class="map-here" cx="${x}" cy="${y}" r="14" vector-effect="non-scaling-stroke" />
+        <circle class="map-here-halo" cx="${x}" cy="${y}" r="${28 * MAP_K}" />
+        <circle class="map-here" cx="${x}" cy="${y}" r="${14 * MAP_K}" vector-effect="non-scaling-stroke" />
       </svg>
       <div class="spark-caption"><span>${escapeHtml(CONFIG.mapCredit || '')}</span></div>
     </article>`;

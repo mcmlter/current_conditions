@@ -41,11 +41,11 @@ const CONFIG = {
   // Logo beside the station name. Set to null to hide it.
   logoImage: 'img/MCM_bigger_better_trans.png',
 
-  // Locator map (USGS 1:250,000 shaded relief, cropped to the stations).
+  // Locator map (10 m Sentinel-2 satellite image, cropped to the stations; maintenance/build_map.py).
   // Set to null to hide the map tile.
-  mapImage: 'img/dry-valleys.png',
-  mapSize: [680, 400],        // the image's pixel size
-  mapCredit: 'Map: USGS 1:250,000 shaded relief',
+  mapImage: 'img/dry-valleys.jpg',
+  mapSize: [1360, 800],        // the image's pixel size
+  mapCredit: 'Contains modified Copernicus Sentinel data 2026',
 };
 
 const MS_TO_KT = 1.94384;
@@ -77,17 +77,17 @@ const VARIABLES = {
 
 // ─── Sites, in rotation order ─────────────────────────────────
 // map = [x, y] position on CONFIG.mapImage, in % of its width / height
-//       (from the stations' GPS coordinates, georeferenced to the map's graticule)
+//       (from the stations' GPS coordinates; printed by maintenance/build_map.py)
 const SITES = [
-  { code: 'boym', type: 'met', name: 'Lake Bonney', map: [38.6, 71.2] },
-  { code: 'tarm', type: 'met', name: 'Taylor Glacier', map: [32.8, 75.1] },
-  { code: 'ho2m', type: 'met', name: 'Lake Hoare', map: [46.0, 58.1] },
-  { code: 'caam', type: 'met', name: 'Canada Glacier', map: [47.1, 56.5] },
-  { code: 'frlm', type: 'met', name: 'Lake Fryxell', map: [50.8, 56.1] },
-  { code: 'hodm', type: 'met', name: 'Howard Glacier', map: [49.3, 64.6] },
-  { code: 'cohm', type: 'met', name: 'Commonwealth Glacier', map: [52.7, 49.5] },
-  { code: 'exem', type: 'met', name: "Explorer's Cove", map: [55.1, 52.8] },
-  { code: 'brhm', type: 'met', name: 'Lake Brownworth', map: [42.1, 31.7] },
-  { code: 'vaam', type: 'met', name: 'Lake Vanda', map: [24.3, 45.8] },
-  { code: 'viam', type: 'met', name: 'Lake Vida', map: [25.7, 24.9] },
+  { code: 'boym', type: 'met', name: 'Lake Bonney', map: [55.7, 71.0] },
+  { code: 'tarm', type: 'met', name: 'Taylor Glacier', map: [50.0, 75.0] },
+  { code: 'ho2m', type: 'met', name: 'Lake Hoare', map: [63.1, 57.8] },
+  { code: 'caam', type: 'met', name: 'Canada Glacier', map: [64.2, 56.3] },
+  { code: 'frlm', type: 'met', name: 'Lake Fryxell', map: [67.8, 55.8] },
+  { code: 'hodm', type: 'met', name: 'Howard Glacier', map: [66.3, 64.2] },
+  { code: 'cohm', type: 'met', name: 'Commonwealth Glacier', map: [69.7, 49.2] },
+  { code: 'exem', type: 'met', name: "Explorer's Cove", map: [72.1, 52.4] },
+  { code: 'brhm', type: 'met', name: 'Lake Brownworth', map: [59.0, 31.5] },
+  { code: 'vaam', type: 'met', name: 'Lake Vanda', map: [41.4, 45.8] },
+  { code: 'viam', type: 'met', name: 'Lake Vida', map: [42.6, 25.0] },
 ];
