@@ -120,7 +120,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
   align-items: baseline;
   gap: 0.3em;
   padding: 0.15rem 0.65rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border: 1px solid rgba(37, 99, 235, 0.3);      /* --accent at 30 % */
   border-radius: 100px;
   background: var(--accent-light);
   color: var(--accent);
@@ -137,7 +137,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 }
 .feels-like.is-warm {
   background: var(--warm-light);
-  border-color: color-mix(in srgb, var(--warm) 30%, transparent);
+  border-color: rgba(201, 42, 42, 0.3);           /* --warm at 30 % */
   color: var(--warm);
 }
 
@@ -407,7 +407,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 .swatch.s-c { border-top-style: dotted; border-top-color: var(--series-c); }
 
 /* --- Wind-direction arrows on the wind trend line ----------- */
-.wind-arrows { position: absolute; inset: 0; pointer-events: none; }
+.wind-arrows { position: absolute; top: 0; right: 0; bottom: 0; left: 0; pointer-events: none; }
 .wind-arrow-mini {
   position: absolute;
   width: 0.95rem;
@@ -500,7 +500,7 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 
 .spark {
   position: absolute;
-  inset: 0;
+  top: 0; right: 0; bottom: 0; left: 0;
   width: 100%;
   height: 100%;
   overflow: visible;
@@ -516,7 +516,9 @@ body:not(.embedded) .spark-wrap { max-height: none; }   /* sparklines absorb spa
 .spark-line.s-b { stroke: var(--series-b); stroke-dasharray: 5 3; }
 .spark-line.s-c { stroke: var(--series-c); stroke-dasharray: 1.5 3; }
 
-.spark-area { fill: color-mix(in srgb, var(--line, var(--series-a)) 9%, var(--surface)); }
+/* A light tint of the line colour (opacity rather than color-mix(), which
+   browsers older than Chrome 111 don't know and would draw as solid black). */
+.spark-area { fill: var(--line, var(--series-a)); fill-opacity: 0.09; }
 
 .spark-dot {
   position: absolute;
