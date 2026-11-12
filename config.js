@@ -12,7 +12,16 @@ const CONFIG = {
 
   rotateSeconds: 60,          // how long each site stays on screen
   freshHours: 12,             // skip sites whose newest record is older than this
-  recheckStaleMinutes: 10,    // after a site is stale/unreachable, wait this long before asking again
+
+  // When to ask the proxy for a site again (see fetchDue in app.js). The
+  // loggers upload every 6 hours, so a site that has data isn't re-fetched
+  // until 6 h 10 min after its newest observation; if that upload is late,
+  // it's re-asked every lateRecheckMinutes until new data arrives.
+  updateHours: 6,
+  updateGraceMinutes: 10,
+  lateRecheckMinutes: 30,
+  noDataRecheckHours: 3,      // nothing within freshHours, or the proxy returned an error: recheck this often
+  errorRecheckMinutes: 10,    // no answer at all (network drop / timeout): try again after this
   fetchTimeoutSeconds: 10,    // give up on a request (and try the next site) after this
   trendHours: 24,             // sparkline + range window, back from the site's latest observation
 

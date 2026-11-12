@@ -6,6 +6,10 @@ program in Antarctica. It shows the latest readings from one weather station at 
 time and moves on to the next station every minute. Sites that
 haven't reported in the last 12 hours are skipped automatically.
 
+The stations upload every 6 hours, so the page only asks for a station's data when
+new data is due (6 h 10 min after its newest observation, then every 30 minutes
+until the upload arrives); stations with no recent data are checked every 3 hours.
+
 The page works on phones, desktops and large lobby displays.
 
 > **Provisional data.** These are near-real-time readings straight from the field
